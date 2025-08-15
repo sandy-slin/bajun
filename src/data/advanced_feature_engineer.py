@@ -61,6 +61,12 @@ class AdvancedFeatureEngineer:
             # 9. 交叉验证特征
             features = self._add_cross_validation_features(features)
             
+            # 10. 市场情绪特征增强 (阶段一优化)
+            features = self._add_market_sentiment_features(features)
+            
+            # 11. 时间序列增强特征 (阶段一优化) 
+            features = self._add_enhanced_time_series_features(features)
+            
             # 数据清洗和质量控制
             features = self._clean_and_validate_features(features)
             
@@ -438,4 +444,255 @@ class AdvancedFeatureEngineer:
             
         except Exception as e:
             self.logger.error(f"数据清洗失败: {e}")
+            return data
+    
+    def _add_market_sentiment_features(self, data: pd.DataFrame) -> pd.DataFrame:
+        """添加市场情绪特征增强 - 阶段一优化"""
+        try:
+            # 1. 模拟北向资金流向指标（基于成交量和价格变化）
+            data['northbound_flow_proxy'] = (
+                data['volume'] * data['close'].pct_change() * 
+                (data['close'] > data['close'].rolling(5).mean()).astype(int)
+            )
+            
+            # 北向资金流向强度（5日和20日移动平均）
+            data['northbound_flow_5d'] = data['northbound_flow_proxy'].rolling(5).mean()
+            data['northbound_flow_20d'] = data['northbound_flow_proxy'].rolling(20).mean()
+            data['northbound_flow_ratio'] = data['northbound_flow_5d'] / (data['northbound_flow_20d'] + 1e-8)
+            
+            # 2. 模拟融资融券指标（基于成交量放大和价格波动）
+            volume_ma = data['volume'].rolling(20).mean()
+            price_volatility = data['close'].rolling(5).std() / data['close'].rolling(5).mean()
+            
+            # 融资买入强度（成交量放大 + 价格上涨）
+            data['margin_buy_intensity'] = (
+                (data['volume'] / volume_ma) * 
+                (data['close'] > data['close'].shift(1)).astype(int) *
+                (1 + price_volatility)
+            )
+            
+            # 融券卖出强度（成交量放大 + 价格下跌）
+            data['margin_sell_intensity'] = (
+                (data['volume'] / volume_ma) * 
+                (data['close'] < data['close'].shift(1)).astype(int) *
+                (1 + price_volatility)
+            )
+            
+            # 融资融券余额变化率
+            data['margin_balance_change'] = (
+                data['margin_buy_intensity'] - data['margin_sell_intensity']
+            ).rolling(5).mean()
+            
+            # 3. 市场恐慌指数（基于波动率构建）
+            # 短期波动率 vs 长期波动率
+            short_vol = data['close'].rolling(5).std() / data['close'].rolling(5).mean()
+            long_vol = data['close'].rolling(20).std() / data['close'].rolling(20).mean()
+            data['fear_index'] = short_vol / (long_vol + 1e-8)
+            
+            # VIX式恐慌指数（基于价格跳跃）
+            price_jumps = abs(data['close'].pct_change())
+            data['vix_proxy'] = price_jumps.rolling(10).mean() * 100
+            
+            # 恐慌指数的移动平均和偏离度
+            data['fear_index_ma'] = data['fear_index'].rolling(10).mean()
+            data['fear_deviation'] = (data['fear_index'] - data['fear_index_ma']) / (data['fear_index_ma'] + 1e-8)
+            
+            # 4. 板块资金流向强度
+            # 价量配合度（价格上涨时成交量放大程度）
+            price_change = data['close'].pct_change()
+            volume_change = data['volume'].pct_change()
+            data['price_volume_sync'] = np.where(
+                price_change > 0,
+                volume_change * price_change,  # 上涨时的价量配合
+                -volume_change * abs(price_change)  # 下跌时的价量背离
+            )
+            
+            # 资金流向强度指标
+            data['money_flow_strength'] = (
+                data['price_volume_sync'].rolling(5).sum() / 
+                abs(data['price_volume_sync']).rolling(5).sum()
+            )
+            
+            # 大单流入强度（基于成交量分析）
+            volume_percentile = data['volume'].rolling(20).quantile(0.8)
+            data['big_order_flow'] = np.where(
+                data['volume'] > volume_percentile,
+                data['volume'] * (data['close'] > data['open']).astype(int),
+                0
+            )
+            data['big_order_flow_ratio'] = (
+                data['big_order_flow'].rolling(5).sum() / 
+                (data['volume'].rolling(5).sum() + 1)
+            )
+            
+            # 5. 市场情绪复合指标
+            # 标准化各个情绪指标
+            sentiment_features = ['northbound_flow_ratio', 'margin_balance_change', 
+                                'fear_deviation', 'money_flow_strength']
+            
+            for feature in sentiment_features:
+                if feature in data.columns:
+                    # Z-score标准化
+                    mean_val = data[feature].rolling(20).mean()
+                    std_val = data[feature].rolling(20).std()
+                    data[f'{feature}_zscore'] = (data[feature] - mean_val) / (std_val + 1e-8)
+            
+            # 综合市场情绪指数
+            sentiment_cols = [f'{f}_zscore' for f in sentiment_features if f'{f}_zscore' in data.columns]
+            if sentiment_cols:
+                data['market_sentiment_composite'] = data[sentiment_cols].mean(axis=1)
+                data['market_sentiment_extreme'] = (
+                    abs(data['market_sentiment_composite']) > 1.5
+                ).astype(int)
+            
+            self.logger.info("市场情绪特征增强完成")
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"市场情绪特征创建失败: {e}")
+            return data
+    
+    def _add_enhanced_time_series_features(self, data: pd.DataFrame) -> pd.DataFrame:
+        """添加时间序列增强特征 - 阶段一优化"""
+        try:
+            # 1. LSTM风格的滑动窗口特征
+            windows = [3, 5, 8, 13, 21]  # 斐波那契数列窗口
+            
+            for window in windows:
+                # 滑动窗口统计特征
+                data[f'close_mean_{window}'] = data['close'].rolling(window).mean()
+                data[f'close_std_{window}'] = data['close'].rolling(window).std()
+                data[f'close_skew_{window}'] = data['close'].rolling(window).skew()
+                data[f'close_kurt_{window}'] = data['close'].rolling(window).kurt()
+                
+                # 价格在窗口内的相对位置
+                rolling_min = data['close'].rolling(window).min()
+                rolling_max = data['close'].rolling(window).max()
+                data[f'close_percentile_{window}'] = (
+                    (data['close'] - rolling_min) / (rolling_max - rolling_min + 1e-8)
+                )
+                
+                # 趋势强度（线性回归斜率）
+                def calculate_slope(series):
+                    if len(series) < 2:
+                        return 0
+                    x = np.arange(len(series))
+                    slope = np.polyfit(x, series, 1)[0] if not series.isna().all() else 0
+                    return slope
+                
+                data[f'trend_slope_{window}'] = (
+                    data['close'].rolling(window).apply(calculate_slope, raw=False)
+                )
+            
+            # 2. 多时间框架技术指标（模拟不同级别）
+            # 短期：3-5天
+            data['short_momentum'] = data['close'] / data['close'].shift(3) - 1
+            data['short_volatility'] = data['close'].rolling(3).std() / data['close'].rolling(3).mean()
+            
+            # 中期：8-13天  
+            data['medium_momentum'] = data['close'] / data['close'].shift(8) - 1
+            data['medium_volatility'] = data['close'].rolling(8).std() / data['close'].rolling(8).mean()
+            
+            # 长期：21天
+            data['long_momentum'] = data['close'] / data['close'].shift(21) - 1
+            data['long_volatility'] = data['close'].rolling(21).std() / data['close'].rolling(21).mean()
+            
+            # 动量强度比较
+            data['momentum_acceleration'] = (
+                data['short_momentum'] - data['medium_momentum']
+            )
+            data['momentum_consistency'] = np.where(
+                (data['short_momentum'] > 0) & (data['medium_momentum'] > 0) & (data['long_momentum'] > 0), 1,
+                np.where(
+                    (data['short_momentum'] < 0) & (data['medium_momentum'] < 0) & (data['long_momentum'] < 0), -1,
+                    0
+                )
+            )
+            
+            # 3. 趋势持续性特征
+            # 连续上涨/下跌天数
+            price_direction = np.where(data['close'] > data['close'].shift(1), 1, -1)
+            
+            # 计算连续趋势长度
+            def count_consecutive(series):
+                """计算连续相同值的长度"""
+                consecutive = []
+                current_count = 1
+                current_value = series.iloc[0] if len(series) > 0 else 0
+                
+                for i in range(1, len(series)):
+                    if series.iloc[i] == current_value:
+                        current_count += 1
+                    else:
+                        current_count = 1
+                        current_value = series.iloc[i]
+                    consecutive.append(current_count)
+                
+                return consecutive[0] if consecutive else 0
+            
+            # 使用滑动窗口计算趋势持续性
+            data['trend_persistence'] = pd.Series(price_direction).rolling(10).apply(
+                lambda x: abs(x.sum()) / len(x), raw=False
+            )
+            
+            # 趋势强度权重（考虑成交量）
+            volume_normalized = data['volume'] / data['volume'].rolling(20).mean()
+            data['weighted_trend_strength'] = (
+                data['trend_persistence'] * np.log1p(volume_normalized)
+            )
+            
+            # 4. 周期性特征（基于技术分析周期）
+            # 短周期反转信号
+            data['short_cycle_reversal'] = np.where(
+                (data['close'] < data['close'].rolling(5).mean()) & 
+                (data['close'].shift(1) > data['close'].shift(1).rolling(5).mean()), 1,
+                np.where(
+                    (data['close'] > data['close'].rolling(5).mean()) & 
+                    (data['close'].shift(1) < data['close'].shift(1).rolling(5).mean()), -1,
+                    0
+                )
+            )
+            
+            # 中周期趋势确认
+            data['medium_cycle_confirmation'] = np.where(
+                (data['close'] > data['close'].rolling(13).mean()) & 
+                (data['close'].rolling(5).mean() > data['close'].rolling(13).mean()), 1,
+                np.where(
+                    (data['close'] < data['close'].rolling(13).mean()) & 
+                    (data['close'].rolling(5).mean() < data['close'].rolling(13).mean()), -1,
+                    0
+                )
+            )
+            
+            # 5. 序列记忆特征（模拟LSTM记忆机制）
+            # 历史价格影响衰减
+            decay_factors = [0.9, 0.8, 0.7, 0.6, 0.5]
+            data['price_memory'] = 0
+            
+            for i, factor in enumerate(decay_factors, 1):
+                if i < len(data):
+                    data['price_memory'] += (
+                        data['close'].pct_change(i) * factor
+                    )
+            
+            # 成交量记忆
+            data['volume_memory'] = 0
+            for i, factor in enumerate(decay_factors, 1):
+                if i < len(data):
+                    volume_change = data['volume'].pct_change(i)
+                    data['volume_memory'] += volume_change * factor
+            
+            # 波动率记忆
+            volatility = data['close'].rolling(5).std() / data['close'].rolling(5).mean()
+            data['volatility_memory'] = 0
+            for i, factor in enumerate(decay_factors, 1):
+                if i < len(data):
+                    vol_change = volatility.pct_change(i)
+                    data['volatility_memory'] += vol_change * factor
+            
+            self.logger.info("时间序列增强特征完成")
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"时间序列增强特征创建失败: {e}")
             return data
