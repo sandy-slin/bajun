@@ -12,6 +12,8 @@ import os
 
 from data.sector_fetcher import SectorFetcher
 from data.technical_calculator import TechnicalCalculator
+from data.enhanced_data_fetcher import EnhancedDataFetcher
+from analysis.enhanced_predictor import EnhancedPredictor
 from analysis.report_manager import ReportManager
 
 
@@ -19,11 +21,16 @@ class SectorScreener:
     """板块筛选器"""
     
     def __init__(self, sector_fetcher: SectorFetcher, tech_calculator: TechnicalCalculator,
+                 enhanced_data_fetcher: EnhancedDataFetcher, enhanced_predictor: EnhancedPredictor,
                  report_manager: ReportManager):
         self.sector_fetcher = sector_fetcher
         self.tech_calculator = tech_calculator
+        self.enhanced_data_fetcher = enhanced_data_fetcher
+        self.enhanced_predictor = enhanced_predictor
         self.report_manager = report_manager
         self.logger = logging.getLogger(__name__)
+        # 是否使用增强预测系统
+        self.use_enhanced_prediction = True
         
     async def screen_top_sectors(self, top_n: int = 5, period: str = "1-2weeks") -> Dict:
         """
@@ -49,20 +56,51 @@ class SectorScreener:
             if not sectors_data:
                 raise ValueError("未能获取板块数据")
                 
-            # 2. 计算各板块评分
+            # 2. 计算各板块评分 (使用增强预测系统)
             sectors_scores = {}
             for sector_name, sector_df in sectors_data.items():
                 try:
-                    scores = self.tech_calculator.calculate_sector_strength_score(sector_df)
-                    scores['sector_name'] = sector_name
-                    scores['data_quality'] = len(sector_df)
+                    if self.use_enhanced_prediction:
+                        # 使用增强预测系统
+                        enhanced_result = await self.enhanced_predictor.calculate_enhanced_sector_score(
+                            sector_name, sector_df, date_range
+                        )
+                        scores = enhanced_result
+                        scores['sector_name'] = sector_name
+                        scores['data_quality'] = len(sector_df)
+                        
+                        # 保持兼容性，提取主要评分
+                        if 'base_scores' in enhanced_result:
+                            scores.update(enhanced_result['base_scores'])
+                        
+                        # 记录增强预测结果
+                        prediction_info = enhanced_result.get('prediction', {})
+                        if prediction_info and 'trend_prediction' in prediction_info:
+                            scores['trend_prediction'] = prediction_info['trend_prediction']
+                            scores['target_return'] = prediction_info.get('target_return', 0)
+                            scores['confidence_level'] = prediction_info.get('confidence_level', '中等')
+                    else:
+                        # 使用基础评分系统
+                        scores = self.tech_calculator.calculate_sector_strength_score(sector_df)
+                        scores['sector_name'] = sector_name
+                        scores['data_quality'] = len(sector_df)
+                    
                     sectors_scores[sector_name] = scores
                     
                     self.logger.debug(f"{sector_name}: 综合评分 {scores.get('comprehensive_score', 0):.1f}")
                     
                 except Exception as e:
-                    self.logger.error(f"计算{sector_name}评分失败: {e}")
-                    continue
+                    self.logger.error(f"计算{sector_name}评分失败: {e}，回退到基础评分")
+                    try:
+                        # 回退到基础评分系统
+                        scores = self.tech_calculator.calculate_sector_strength_score(sector_df)
+                        scores['sector_name'] = sector_name
+                        scores['data_quality'] = len(sector_df)
+                        scores['fallback'] = True
+                        sectors_scores[sector_name] = scores
+                    except Exception as fallback_e:
+                        self.logger.error(f"基础评分也失败: {fallback_e}")
+                        continue
                     
             if not sectors_scores:
                 raise ValueError("未能计算任何板块评分")
@@ -235,22 +273,62 @@ class SectorScreener:
             # Top N板块详情
             top_sectors = result.get('top_sectors', [])
             for i, sector in enumerate(top_sectors[:5], 1):
+                # 检查是否有增强预测结果
+                has_enhanced = 'enhanced_scores' in sector and sector.get('enhanced_scores')
+                prediction = sector.get('prediction', {})
+                
                 content += f"""### {i}. {sector.get('sector_name', 'Unknown')}
 
 - **综合评分**: {sector.get('comprehensive_score', 0):.1f}/100
-- **推荐等级**: {sector.get('recommendation', 'Hold')}
-- **技术面评分**: {sector.get('scores_breakdown', {}).get('technical', 0):.1f}/100
-  - RSI指标: {sector.get('scores_breakdown', {}).get('rsi_score', 0):.1f}
-  - 均线突破: {sector.get('scores_breakdown', {}).get('ma_breakthrough_score', 0):.1f}
-  - MACD信号: {sector.get('scores_breakdown', {}).get('macd_score', 0):.1f}
-- **资金流向评分**: {sector.get('scores_breakdown', {}).get('money_flow', 0):.1f}/100
-  - 成交量: {sector.get('scores_breakdown', {}).get('volume_score', 0):.1f}
-  - 成交额: {sector.get('scores_breakdown', {}).get('amount_score', 0):.1f}
-  - 主力资金: {sector.get('scores_breakdown', {}).get('main_fund_score', 0):.1f}
-- **基本面评分**: {sector.get('scores_breakdown', {}).get('fundamental', 0):.1f}/100
-- **轮动周期评分**: {sector.get('scores_breakdown', {}).get('rotation', 0):.1f}/100
+- **推荐等级**: {sector.get('recommendation', 'Hold')}"""
+                
+                # 如果有增强预测，显示预测结果
+                if prediction and 'trend_prediction' in prediction:
+                    content += f"""
+- **趋势预测**: {prediction.get('trend_prediction', '震荡')}
+- **预期收益**: {prediction.get('target_return', 0):+.1f}%
+- **预测概率**: {prediction.get('probability', 50):.1f}%
+- **置信水平**: {prediction.get('confidence_level', '中等')}
+- **预测周期**: {prediction.get('prediction_horizon', '3个交易日')}"""
 
-"""
+                content += f"""
+- **技术面评分**: {sector.get('scores_breakdown', {}).get('technical', sector.get('technical_score', 0)):.1f}/100
+  - RSI指标: {sector.get('scores_breakdown', {}).get('rsi_score', sector.get('rsi_score', 0)):.1f}
+  - 均线突破: {sector.get('scores_breakdown', {}).get('ma_breakthrough_score', sector.get('ma_breakthrough_score', 0)):.1f}
+  - MACD信号: {sector.get('scores_breakdown', {}).get('macd_score', sector.get('macd_score', 0)):.1f}
+- **资金流向评分**: {sector.get('scores_breakdown', {}).get('money_flow', sector.get('money_flow_score', 0)):.1f}/100
+  - 成交量: {sector.get('scores_breakdown', {}).get('volume_score', sector.get('volume_score', 0)):.1f}
+  - 成交额: {sector.get('scores_breakdown', {}).get('amount_score', sector.get('amount_score', 0)):.1f}
+  - 主力资金: {sector.get('scores_breakdown', {}).get('main_fund_score', sector.get('main_fund_score', 0)):.1f}
+- **基本面评分**: {sector.get('scores_breakdown', {}).get('fundamental', sector.get('fundamental_score', 0)):.1f}/100
+- **轮动周期评分**: {sector.get('scores_breakdown', {}).get('rotation', sector.get('rotation_score', 0)):.1f}/100"""
+                
+                # 如果有增强数据，显示增强指标
+                if has_enhanced:
+                    enhanced_scores = sector.get('enhanced_scores', {})
+                    content += f"""
+
+#### 增强指标
+- **北向资金评分**: {enhanced_scores.get('northbound_score', 50):.1f}/100
+- **融资融券评分**: {enhanced_scores.get('margin_score', 50):.1f}/100
+- **市场情绪评分**: {enhanced_scores.get('sentiment_score', 50):.1f}/100
+- **宏观环境评分**: {enhanced_scores.get('macro_score', 50):.1f}/100"""
+                    
+                    # 显示关键驱动因子
+                    if prediction and 'key_drivers' in prediction:
+                        key_drivers = prediction['key_drivers']
+                        if key_drivers:
+                            content += f"""
+- **关键驱动因子**: {', '.join(key_drivers)}"""
+                    
+                    # 显示风险因子
+                    if prediction and 'risk_factors' in prediction:
+                        risk_factors = prediction['risk_factors']
+                        if risk_factors and risk_factors != ['风险可控']:
+                            content += f"""
+- **风险因子**: {', '.join(risk_factors)}"""
+                
+                content += "\n\n"
             
             # 市场概览
             market_overview = result.get('market_overview', {})

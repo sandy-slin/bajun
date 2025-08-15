@@ -13,11 +13,15 @@ from typing import Optional, List
 from data.fetcher import DataFetcher
 from data.sector_fetcher import SectorFetcher
 from data.technical_calculator import TechnicalCalculator
+from data.enhanced_data_fetcher import EnhancedDataFetcher
 from cache.manager import CacheManager
 from analysis.llm_analyzer import LLMAnalyzer
 from analysis.sector_screener import SectorScreener
 from analysis.sector_analyzer import SectorAnalyzer
 from analysis.sector_backtester import SectorBacktester
+from analysis.enhanced_predictor import EnhancedPredictor
+from analysis.prediction_validator import PredictionValidator
+from analysis.model_optimizer import ModelOptimizer
 from analysis.report_manager import ReportManager
 from config.settings import Settings
 
@@ -35,9 +39,16 @@ class StockInfoSystem:
         self.sector_fetcher = SectorFetcher(self.cache_manager)
         self.tech_calculator = TechnicalCalculator()
         self.report_manager = ReportManager()
+        
+        # 增强预测系统组件
+        self.enhanced_data_fetcher = EnhancedDataFetcher(self.cache_manager)
+        self.enhanced_predictor = EnhancedPredictor(self.enhanced_data_fetcher, self.tech_calculator)
+        
         self.sector_screener = SectorScreener(
             self.sector_fetcher, 
-            self.tech_calculator, 
+            self.tech_calculator,
+            self.enhanced_data_fetcher,
+            self.enhanced_predictor,
             self.report_manager
         )
         self.sector_analyzer = SectorAnalyzer(
@@ -50,6 +61,21 @@ class StockInfoSystem:
         self.sector_backtester = SectorBacktester(
             self.sector_fetcher,
             self.cache_manager
+        )
+        
+        # 添加预测验证器
+        self.prediction_validator = PredictionValidator(
+            self.sector_fetcher,
+            self.enhanced_data_fetcher,
+            self.enhanced_predictor,
+            self.tech_calculator
+        )
+        
+        # 添加模型优化器
+        self.model_optimizer = ModelOptimizer(
+            self.sector_fetcher,
+            self.enhanced_data_fetcher,
+            self.tech_calculator
         )
         
     async def run_analysis(self, stock_code: Optional[str] = None) -> dict:
@@ -125,6 +151,46 @@ class StockInfoSystem:
         except Exception as e:
             logging.error(f"板块回测失败: {e}")
             return {'status': 'error', 'message': str(e)}
+            
+    async def run_prediction_validation(self, validation_periods: int = 10,
+                                      prediction_days: int = 3) -> dict:
+        """运行预测验证流程"""
+        try:
+            result = await self.prediction_validator.validate_predictions(
+                validation_periods=validation_periods,
+                prediction_days=prediction_days
+            )
+            
+            # 保存验证报告
+            if 'error' not in result:
+                report_path = await self.prediction_validator.save_validation_report(result)
+                result['report_path'] = report_path
+                
+            return result
+            
+        except Exception as e:
+            logging.error(f"预测验证失败: {e}")
+            return {'status': 'error', 'message': str(e)}
+            
+    async def run_model_optimization(self, optimization_cycles: int = 5,
+                                   validation_periods: int = 8) -> dict:
+        """运行模型优化流程"""
+        try:
+            result = await self.model_optimizer.optimize_model(
+                optimization_cycles=optimization_cycles,
+                validation_periods=validation_periods
+            )
+            
+            # 保存优化报告
+            if 'error' not in result:
+                report_path = await self.model_optimizer.save_optimization_report(result)
+                result['report_path'] = report_path
+                
+            return result
+            
+        except Exception as e:
+            logging.error(f"模型优化失败: {e}")
+            return {'status': 'error', 'message': str(e)}
 
 
 def setup_logging():
@@ -161,6 +227,20 @@ async def main():
                        help='再平衡频率 (default: weekly)')
     parser.add_argument('--initial-capital', type=float, default=1000000.0, 
                        help='初始资金 (default: 1000000.0)')
+    
+    # 预测验证相关参数
+    parser.add_argument('--prediction-validation', action='store_true', help='预测验证功能')
+    parser.add_argument('--validation-periods', type=int, default=10, 
+                       help='验证期数 (default: 10)')
+    parser.add_argument('--prediction-days', type=int, default=3,
+                       help='预测天数 (default: 3)')
+    
+    # 模型优化相关参数
+    parser.add_argument('--model-optimization', action='store_true', help='模型参数优化功能')
+    parser.add_argument('--optimization-cycles', type=int, default=5,
+                       help='优化轮数 (default: 5)')
+    parser.add_argument('--optimization-validation-periods', type=int, default=8,
+                       help='优化验证期数 (default: 8)')
     
     args = parser.parse_args()
     
@@ -399,8 +479,92 @@ async def main():
             
         return
     
+    # 处理预测验证命令
+    if args.prediction_validation:
+        print(f"=== 开始预测验证 ===")
+        print(f"验证期数: {args.validation_periods}")
+        print(f"预测天数: {args.prediction_days}")
+        print("正在分析历史数据...请耐心等待")
+        
+        result = await system.run_prediction_validation(
+            validation_periods=args.validation_periods,
+            prediction_days=args.prediction_days
+        )
+        
+        if 'error' in result:
+            print(f"❌ 验证失败: {result['error']}")
+            return
+            
+        # 显示验证结果
+        stats = result.get('overall_statistics', {})
+        print(f"\n=== 验证结果 ===")
+        print(f"验证期数: {result.get('validation_periods', 0)}")
+        print(f"总预测次数: {result.get('total_predictions', 0)}")
+        print(f"总体准确率: {stats.get('accuracy', 0):.1%}")
+        print(f"方向准确率: {stats.get('avg_direction_accuracy', 0):.1f}%")
+        print(f"收益率准确率: {stats.get('avg_return_accuracy', 0):.1f}%")
+        print(f"预测稳定性: {stats.get('stability', 0):.1%}")
+        print(f"平均误差: {stats.get('avg_return_error', 0):.2f}%")
+        print(f"综合评级: {stats.get('grade', '未知')}")
+        
+        # 显示优化建议
+        suggestions = result.get('optimization_suggestions', [])
+        if suggestions:
+            print(f"\n=== 优化建议 ===")
+            for i, suggestion in enumerate(suggestions[:5], 1):
+                print(f"{i}. {suggestion}")
+                
+        # 显示报告路径
+        if result.get('report_path'):
+            print(f"\n📝 详细验证报告已保存: {result['report_path']}")
+            
+        return
+    
+    # 处理模型优化命令
+    if args.model_optimization:
+        print(f"=== 开始模型优化 ===")
+        print(f"优化轮数: {args.optimization_cycles}")
+        print(f"验证期数: {args.optimization_validation_periods}")
+        print("正在搜索最优参数配置...请耐心等待")
+        
+        result = await system.run_model_optimization(
+            optimization_cycles=args.optimization_cycles,
+            validation_periods=args.optimization_validation_periods
+        )
+        
+        if 'error' in result:
+            print(f"❌ 优化失败: {result['error']}")
+            return
+            
+        # 显示优化结果
+        print(f"\n=== 优化结果 ===")
+        print(f"基线准确率: {result.get('baseline_accuracy', 0):.1%}")
+        print(f"优化后准确率: {result.get('best_accuracy', 0):.1%}")
+        print(f"绝对提升: {result.get('improvement', 0):+.3f}")
+        print(f"相对提升: {result.get('improvement_percentage', 0):+.1f}%")
+        
+        # 显示最佳配置
+        best_config = result.get('best_config', {})
+        if best_config:
+            print(f"\n=== 最佳参数配置 ===")
+            for param, weight in best_config.items():
+                print(f"{param}: {weight:.3f}")
+        
+        # 显示优化建议
+        recommendations = result.get('recommendations', [])
+        if recommendations:
+            print(f"\n=== 优化建议 ===")
+            for i, rec in enumerate(recommendations[:5], 1):
+                print(f"{i}. {rec}")
+                
+        # 显示报告路径
+        if result.get('report_path'):
+            print(f"\n📝 详细优化报告已保存: {result['report_path']}")
+            
+        return
+    
     # 执行股票分析
-    if args.stock or not any([args.sector_screening, args.list_sectors, args.sector_summary, args.sector_analysis]):
+    if args.stock or not any([args.sector_screening, args.list_sectors, args.sector_summary, args.sector_analysis, args.sector_backtest, args.prediction_validation, args.model_optimization]):
         result = await system.run_analysis(args.stock)
         
         if result['status'] == 'success':

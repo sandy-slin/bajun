@@ -24,10 +24,25 @@ class SectorBacktester:
         self.sector_fetcher = sector_fetcher
         self.cache_manager = cache_manager
         self.tech_calculator = TechnicalCalculator()
-        # 创建ReportManager实例
+        # 创建组件
         from analysis.report_manager import ReportManager
+        from data.enhanced_data_fetcher import EnhancedDataFetcher
+        from analysis.enhanced_predictor import EnhancedPredictor
+        
         report_manager = ReportManager()
-        self.sector_screener = SectorScreener(sector_fetcher, self.tech_calculator, report_manager)
+        enhanced_data_fetcher = EnhancedDataFetcher(cache_manager)
+        enhanced_predictor = EnhancedPredictor(enhanced_data_fetcher, self.tech_calculator)
+        
+        # 为回测使用基础评分，避免对可能不存在的增强数据的依赖
+        self.sector_screener = SectorScreener(
+            sector_fetcher, 
+            self.tech_calculator, 
+            enhanced_data_fetcher, 
+            enhanced_predictor,
+            report_manager
+        )
+        # 关闭增强预测用于回测
+        self.sector_screener.use_enhanced_prediction = False
         self.logger = logging.getLogger(__name__)
         
     async def run_backtest(self, 
