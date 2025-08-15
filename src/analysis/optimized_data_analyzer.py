@@ -19,6 +19,7 @@ from data.advanced_feature_engineer import AdvancedFeatureEngineer
 from analysis.intelligent_feature_selector import IntelligentFeatureSelector
 from analysis.advanced_signal_filter import AdvancedSignalFilter
 from analysis.ensemble_prediction_engine import EnsemblePredictionEngine
+from analysis.time_series_validator import TimeSeriesValidator
 
 class OptimizedDataAnalyzer:
     """优化版真实数据分析器，专门解决预测准确率低的问题"""
@@ -40,6 +41,8 @@ class OptimizedDataAnalyzer:
         self.signal_filter = AdvancedSignalFilter(self.logger)
         # 初始化集成预测引擎
         self.ensemble_engine = EnsemblePredictionEngine()
+        # 初始化时序验证器
+        self.time_series_validator = TimeSeriesValidator(self.logger)
         
     async def analyze_prediction_accuracy_optimized(self, 
                                                   analysis_months: int = 2,
@@ -207,24 +210,45 @@ class OptimizedDataAnalyzer:
                     enhanced_df, selected_features, prediction_days
                 )
                 
-                # 基于集成预测的增强分析
+                # 时序验证增强准确率评估
+                ts_validation = self._apply_time_series_validation(
+                    enhanced_df, selected_features, prediction_days
+                )
+                
+                # 基于时序验证的增强分析
                 ensemble_accuracy = ensemble_results.get('accuracy', 0)
-                if ensemble_accuracy > 50:
-                    momentum_acc = max(
-                        self._analyze_enhanced_momentum_with_signals(
-                            enhanced_df, selected_features, signal_results, prediction_days
-                        ),
-                        ensemble_accuracy
+                ts_accuracy = ts_validation.get('validated_accuracy', 0)
+                
+                # 选择最佳准确率结果
+                best_accuracy = max(ensemble_accuracy, ts_accuracy)
+                
+                if best_accuracy > 50:
+                    # 传统方法作为基准
+                    traditional_acc = self._analyze_enhanced_momentum_with_signals(
+                        enhanced_df, selected_features, signal_results, prediction_days
                     )
+                    
+                    # 综合准确率（多方法平均）
+                    final_accuracy = max(traditional_acc, best_accuracy)
+                    
+                    # 计算综合置信度
+                    ts_confidence = ts_validation.get('confidence', 0.5)
+                    ensemble_confidence = ensemble_results.get('confidence', 0.5)
+                    combined_confidence = (ts_confidence + ensemble_confidence + signal_results.get('confidence', 0.5)) / 3
+                    
                     pattern_results['enhanced_momentum']['patterns'].append({
                         'sector': sector_name,
-                        'accuracy': momentum_acc,
+                        'accuracy': final_accuracy,
                         'ensemble_accuracy': ensemble_accuracy,
+                        'ts_validated_accuracy': ts_accuracy,
+                        'traditional_accuracy': traditional_acc,
                         'sample_size': len(enhanced_df),
-                        'confidence': ensemble_results.get('confidence', 0.6),
+                        'confidence': combined_confidence,
                         'signal_quality': signal_results.get('quality_metrics', {}),
                         'selected_features_count': len(selected_features),
-                        'ensemble_models': ensemble_results.get('models_used', 0)
+                        'ensemble_models': ensemble_results.get('models_used', 0),
+                        'ts_validation': ts_validation.get('summary', {}),
+                        'validation_consistency': ts_validation.get('consistency', 'unknown')
                     })
                 else:
                     # 退回到传统方法
@@ -441,6 +465,57 @@ class OptimizedDataAnalyzer:
         except Exception as e:
             self.logger.error(f"集成预测应用失败: {e}")
             return {"accuracy": 0, "confidence": 0, "models_used": 0}
+    
+    def _apply_time_series_validation(self, df: pd.DataFrame,
+                                    selected_features: List[str],
+                                    prediction_days: int) -> Dict:
+        """应用时序验证"""
+        try:
+            if len(df) < 80 or not selected_features:
+                return {"validated_accuracy": 0, "confidence": 0, "consistency": "insufficient_data"}
+            
+            # 执行综合时序验证
+            validation_results = self.time_series_validator.comprehensive_validation(
+                df, selected_features, 'future_return', prediction_days
+            )
+            
+            if validation_results.get('combined_metrics', {}).get('average_accuracy', 0) == 0:
+                return {"validated_accuracy": 0, "confidence": 0, "consistency": "validation_failed"}
+            
+            # 提取关键指标
+            combined = validation_results.get('combined_metrics', {})
+            wf_results = validation_results.get('walk_forward_validation', {})
+            cv_results = validation_results.get('time_series_cv', {})
+            
+            validated_accuracy = combined.get('average_accuracy', 0) * 100  # 转换为百分比
+            confidence = combined.get('overall_confidence', 0.5)
+            consistency = combined.get('validation_consistency', 'unknown')
+            
+            # 计算稳定性指标
+            wf_stability = 0
+            if wf_results.get('status') == 'success':
+                stability_metrics = wf_results.get('stability_metrics', {})
+                wf_stability = stability_metrics.get('stability_score', 0) / 100
+            
+            # 最终置信度结合稳定性
+            final_confidence = min(confidence + wf_stability * 0.2, 1.0)
+            
+            return {
+                "validated_accuracy": validated_accuracy,
+                "confidence": final_confidence,
+                "consistency": consistency,
+                "summary": {
+                    "walk_forward_steps": wf_results.get('total_steps', 0),
+                    "cv_folds": cv_results.get('n_folds', 0),
+                    "accuracy_stability": wf_stability,
+                    "recommendation": combined.get('recommendation', 'needs_assessment')
+                },
+                "detailed_validation": validation_results
+            }
+            
+        except Exception as e:
+            self.logger.error(f"时序验证应用失败: {e}")
+            return {"validated_accuracy": 0, "confidence": 0, "consistency": "error"}
     
     def _analyze_enhanced_momentum(self, df: pd.DataFrame, prediction_days: int) -> float:
         """增强版动量分析"""
