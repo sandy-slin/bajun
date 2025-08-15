@@ -20,6 +20,8 @@ from analysis.intelligent_feature_selector import IntelligentFeatureSelector
 from analysis.advanced_signal_filter import AdvancedSignalFilter
 from analysis.ensemble_prediction_engine import EnsemblePredictionEngine
 from analysis.time_series_validator import TimeSeriesValidator
+# 阶段三新增：增强时序验证器
+from analysis.enhanced_time_series_validator import EnhancedTimeSeriesValidator
 
 class OptimizedDataAnalyzer:
     """优化版真实数据分析器，专门解决预测准确率低的问题"""
@@ -37,12 +39,14 @@ class OptimizedDataAnalyzer:
         self.advanced_feature_engineer = AdvancedFeatureEngineer(self.logger)
         # 初始化智能特征选择器
         self.feature_selector = IntelligentFeatureSelector(self.logger)
-        # 初始化高级信号过滤器
+        # 初始化高级信号过滤器 (阶段二增强版)
         self.signal_filter = AdvancedSignalFilter(self.logger)
-        # 初始化集成预测引擎
-        self.ensemble_engine = EnsemblePredictionEngine()
-        # 初始化时序验证器
+        # 阶段三：初始化增强集成预测引擎（启用高级模型）
+        self.ensemble_engine = EnsemblePredictionEngine(enable_advanced_models=True)
+        # 初始化基础时序验证器
         self.time_series_validator = TimeSeriesValidator(self.logger)
+        # 阶段三：初始化增强时序验证器（季节性感知）
+        self.enhanced_ts_validator = EnhancedTimeSeriesValidator(self.logger)
         
     async def analyze_prediction_accuracy_optimized(self, 
                                                   analysis_months: int = 2,
@@ -205,13 +209,13 @@ class OptimizedDataAnalyzer:
                     enhanced_df, selected_features, prediction_days
                 )
                 
-                # 使用集成预测引擎进行训练和预测
-                ensemble_results = self._apply_ensemble_prediction(
+                # 阶段三：使用增强集成预测引擎（XGBoost + CatBoost + 注意力机制）
+                ensemble_results = self._apply_stage3_ensemble_prediction(
                     enhanced_df, selected_features, prediction_days
                 )
                 
-                # 时序验证增强准确率评估
-                ts_validation = self._apply_time_series_validation(
+                # 阶段三：使用增强时序验证（季节性感知交叉验证）
+                ts_validation = self._apply_stage3_time_series_validation(
                     enhanced_df, selected_features, prediction_days
                 )
                 
@@ -1396,3 +1400,216 @@ class OptimizedDataAnalyzer:
         report += "*所有分析基于真实市场数据，严格禁止模拟数据*\n"
         
         return report
+    
+    def _apply_stage3_ensemble_prediction(self, df: pd.DataFrame, 
+                                        selected_features: List[str],
+                                        prediction_days: int) -> Dict:
+        """阶段三：应用增强集成预测引擎（XGBoost + CatBoost + 注意力机制）"""
+        try:
+            self.logger.info("应用阶段三增强集成预测引擎")
+            
+            if len(df) < 80 or not selected_features:
+                return {"accuracy": 0, "confidence": 0, "models_used": 0, "stage": 3}
+            
+            # 准备训练和测试数据
+            train_size = int(len(df) * 0.7)
+            train_data = df.iloc[:train_size].copy()
+            test_data = df.iloc[train_size:].copy()
+            
+            # 创建目标变量（未来收益率）
+            future_returns = []
+            for i in range(len(train_data) - prediction_days):
+                current_price = train_data.iloc[i]['close']
+                future_price = train_data.iloc[i + prediction_days]['close']
+                returns = (future_price - current_price) / current_price
+                future_returns.append(returns)
+            
+            # 对齐训练数据和目标变量
+            if len(future_returns) > 0:
+                train_features = train_data.iloc[:len(future_returns)]
+                train_target = pd.Series(future_returns)
+                
+                # 训练增强集成模型
+                training_result = self.ensemble_engine.train_ensemble_models(
+                    pd.concat([train_features, train_target.to_frame('future_return')], axis=1),
+                    selected_features,
+                    'future_return'
+                )
+                
+                if training_result.get('status') == 'success':
+                    # 在测试集上进行预测
+                    prediction_result = self.ensemble_engine.predict_with_ensemble_confidence(
+                        test_data, selected_features, confidence_threshold=0.6
+                    )
+                    
+                    if prediction_result.get('status') == 'success':
+                        # 计算实际准确率
+                        test_accuracy = self._validate_ensemble_predictions(
+                            test_data, prediction_result, prediction_days
+                        )
+                        
+                        # 获取集成统计信息
+                        ensemble_stats = prediction_result.get('ensemble_statistics', {})
+                        performance_summary = self.ensemble_engine.get_model_performance_summary()
+                        
+                        result = {
+                            "accuracy": test_accuracy,
+                            "confidence": prediction_result.get('confidence_ratio', 0.5),
+                            "models_used": training_result.get('models_trained', 0),
+                            "stage": 3,
+                            "ensemble_accuracy": training_result.get('ensemble_accuracy', 0),
+                            "high_confidence_ratio": prediction_result.get('confidence_ratio', 0),
+                            "model_weights": training_result.get('model_weights', {}),
+                            "prediction_consensus": ensemble_stats.get('prediction_consensus', 0),
+                            "prediction_diversity": ensemble_stats.get('prediction_diversity', 0),
+                            "best_model": performance_summary.get('best_model', {}),
+                            "model_stability": performance_summary.get('average_accuracy', 0),
+                            "advanced_features": ["XGBoost", "CatBoost", "Attention Mechanism", "Dynamic Weights"]
+                        }
+                        
+                        self.logger.info(f"阶段三集成预测完成，准确率: {test_accuracy:.3f}, 置信度比例: {prediction_result.get('confidence_ratio', 0):.3f}")
+                        return result
+            
+            # 如果训练失败，回退到基础集成方法
+            self.logger.warning("阶段三增强方法失败，回退到基础集成方法")
+            return self._apply_ensemble_prediction(df, selected_features, prediction_days)
+            
+        except Exception as e:
+            self.logger.error(f"阶段三集成预测失败: {e}")
+            # 回退到基础方法
+            return self._apply_ensemble_prediction(df, selected_features, prediction_days)
+    
+    def _apply_stage3_time_series_validation(self, df: pd.DataFrame,
+                                           selected_features: List[str],
+                                           prediction_days: int) -> Dict:
+        """阶段三：应用增强时序验证（季节性感知交叉验证）"""
+        try:
+            self.logger.info("应用阶段三增强时序验证")
+            
+            if len(df) < 100 or not selected_features:
+                return {"validated_accuracy": 0, "confidence": 0, "consistency": "insufficient_data", "stage": 3}
+            
+            # 准备目标变量
+            target_data = df.copy()
+            future_returns = []
+            
+            for i in range(len(df) - prediction_days):
+                current_price = df.iloc[i]['close'] 
+                future_price = df.iloc[i + prediction_days]['close']
+                returns = (future_price - current_price) / current_price
+                future_returns.append(returns)
+            
+            # 添加目标列到数据中
+            if len(future_returns) > 0:
+                aligned_df = df.iloc[:len(future_returns)].copy()
+                aligned_df['future_return'] = future_returns
+                
+                # 执行季节性感知的时序验证
+                validation_result = self.enhanced_ts_validator.perform_seasonal_aware_validation(
+                    aligned_df, selected_features, 'future_return', n_splits=5, test_size=30
+                )
+                
+                if 'error' not in validation_result:
+                    # 使用集成引擎进行验证
+                    ensemble_validation = self.enhanced_ts_validator.validate_ensemble_models(
+                        self.ensemble_engine, aligned_df, selected_features, 'future_return'
+                    )
+                    
+                    performance_analysis = validation_result.get('performance_analysis', {})
+                    seasonal_info = validation_result.get('seasonal_info', {})
+                    
+                    result = {
+                        "validated_accuracy": performance_analysis.get('mean_accuracy', 0) * 100,  # 转换为百分比
+                        "confidence": performance_analysis.get('stability_score', 0),
+                        "consistency": self._determine_validation_consistency(performance_analysis),
+                        "stage": 3,
+                        "seasonal_awareness": seasonal_info.get('has_seasonality', False),
+                        "seasonal_strength": seasonal_info.get('seasonal_strength', 0),
+                        "market_regime": seasonal_info.get('market_cycle_info', {}).get('current_regime', 'unknown'),
+                        "validation_folds": validation_result.get('n_splits', 0),
+                        "performance_trend": performance_analysis.get('performance_trend', {}),
+                        "cross_validation_std": performance_analysis.get('std_accuracy', 0),
+                        "ensemble_consistency": ensemble_validation.get('model_consistency', {}),
+                        "advanced_features": ["Seasonal Awareness", "Market Regime Detection", "Performance Trending"]
+                    }
+                    
+                    self.logger.info(f"阶段三时序验证完成，平均准确率: {result['validated_accuracy']:.1f}%, 稳定性: {result['confidence']:.3f}")
+                    return result
+            
+            # 回退到基础时序验证
+            self.logger.warning("阶段三增强验证失败，回退到基础时序验证")
+            return self._apply_time_series_validation(df, selected_features, prediction_days)
+            
+        except Exception as e:
+            self.logger.error(f"阶段三时序验证失败: {e}")
+            # 回退到基础方法
+            return self._apply_time_series_validation(df, selected_features, prediction_days)
+    
+    def _validate_ensemble_predictions(self, test_data: pd.DataFrame, 
+                                     prediction_result: Dict, 
+                                     prediction_days: int) -> float:
+        """验证集成预测的实际准确率"""
+        try:
+            if prediction_result.get('status') != 'success':
+                return 0.0
+            
+            high_confidence_predictions = prediction_result.get('high_confidence_predictions', [])
+            
+            if not high_confidence_predictions:
+                return 0.0
+            
+            correct_predictions = 0
+            total_predictions = 0
+            
+            for pred_info in high_confidence_predictions:
+                try:
+                    index = pred_info['index']
+                    predicted_return = pred_info['prediction']
+                    
+                    # 检查是否有足够的未来数据
+                    if index + prediction_days < len(test_data):
+                        current_price = test_data.iloc[index]['close']
+                        future_price = test_data.iloc[index + prediction_days]['close']
+                        actual_return = (future_price - current_price) / current_price
+                        
+                        # 方向预测准确性
+                        predicted_direction = 1 if predicted_return > 0 else -1
+                        actual_direction = 1 if actual_return > 0 else -1
+                        
+                        if predicted_direction == actual_direction:
+                            correct_predictions += 1
+                        total_predictions += 1
+                        
+                except Exception as pred_error:
+                    self.logger.warning(f"验证单个预测失败: {pred_error}")
+                    continue
+            
+            if total_predictions > 0:
+                accuracy = (correct_predictions / total_predictions) * 100
+                return accuracy
+            
+            return 0.0
+            
+        except Exception as e:
+            self.logger.error(f"集成预测验证失败: {e}")
+            return 0.0
+    
+    def _determine_validation_consistency(self, performance_analysis: Dict) -> str:
+        """确定验证一致性等级"""
+        try:
+            mean_acc = performance_analysis.get('mean_accuracy', 0)
+            std_acc = performance_analysis.get('std_accuracy', 0)
+            stability_score = performance_analysis.get('stability_score', 0)
+            
+            if stability_score > 0.8 and std_acc < 0.05:
+                return "excellent"
+            elif stability_score > 0.7 and std_acc < 0.08:
+                return "good"
+            elif stability_score > 0.6 and std_acc < 0.12:
+                return "acceptable"
+            else:
+                return "needs_improvement"
+                
+        except Exception as e:
+            self.logger.error(f"一致性等级判定失败: {e}")
+            return "unknown"

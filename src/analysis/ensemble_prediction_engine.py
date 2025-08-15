@@ -8,23 +8,46 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.svm import SVR
 from sklearn.metrics import mean_squared_error, mean_absolute_error
+# 阶段三新增：高级机器学习模型
+try:
+    import xgboost as xgb
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+    
+try:
+    from catboost import CatBoostRegressor
+    CATBOOST_AVAILABLE = True
+except ImportError:
+    CATBOOST_AVAILABLE = False
 import logging
 from datetime import datetime, timedelta
 
 class EnsemblePredictionEngine:
     """
-    集成预测引擎 - 实现多模型协同预测和加权投票系统
+    阶段三增强集成预测引擎 - 实现高级多模型协同预测和智能权重系统
+    新增功能：
+    - XGBoost和CatBoost梯度提升模型
+    - 简化Transformer注意力机制
+    - 动态性能权重调整
+    - 时序特征增强预测
     """
     
-    def __init__(self):
+    def __init__(self, enable_advanced_models=True):
         self.logger = logging.getLogger(__name__)
         self.models = {}
         self.model_weights = {}
         self.model_performance = {}
         self.ensemble_results = {}
+        self.performance_history = {}  # 阶段三：历史性能追踪
+        self.enable_advanced_models = enable_advanced_models
         
         # 初始化基础模型
         self._initialize_base_models()
+        
+        # 阶段三：初始化高级模型
+        if self.enable_advanced_models:
+            self._initialize_advanced_models()
     
     def _initialize_base_models(self):
         """初始化基础预测模型"""
@@ -47,6 +70,89 @@ class EnsemblePredictionEngine:
         }
         
         self.logger.info("已初始化5个基础预测模型")
+    
+    def _initialize_advanced_models(self):
+        """阶段三：初始化高级机器学习模型"""
+        advanced_models = {}
+        
+        # XGBoost模型
+        if XGBOOST_AVAILABLE:
+            advanced_models['xgboost'] = xgb.XGBRegressor(
+                n_estimators=200,
+                max_depth=8,
+                learning_rate=0.1,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                random_state=42,
+                n_jobs=-1,
+                verbosity=0
+            )
+            self.logger.info("XGBoost模型已启用")
+        else:
+            self.logger.warning("XGBoost未安装，跳过XGBoost模型")
+            
+        # CatBoost模型
+        if CATBOOST_AVAILABLE:
+            advanced_models['catboost'] = CatBoostRegressor(
+                iterations=200,
+                depth=8,
+                learning_rate=0.1,
+                random_seed=42,
+                verbose=False,
+                thread_count=-1
+            )
+            self.logger.info("CatBoost模型已启用")
+        else:
+            self.logger.warning("CatBoost未安装，跳过CatBoost模型")
+            
+        # 简化注意力机制模型（基于线性变换模拟Transformer）
+        advanced_models['attention_ensemble'] = self._create_attention_model()
+        
+        # 合并高级模型
+        self.base_models.update(advanced_models)
+        self.logger.info(f"已初始化{len(advanced_models)}个高级预测模型")
+    
+    def _create_attention_model(self):
+        """创建简化的注意力机制模型"""
+        class SimpleAttentionModel:
+            def __init__(self):
+                self.attention_weights = None
+                self.linear_layer = Ridge(alpha=0.1)
+                self.feature_importance = None
+                
+            def fit(self, X, y):
+                # 计算特征注意力权重（基于相关性）
+                correlations = []
+                for i in range(X.shape[1]):
+                    corr = np.corrcoef(X.iloc[:, i], y)[0, 1]
+                    correlations.append(abs(corr) if not np.isnan(corr) else 0)
+                
+                # 归一化注意力权重
+                total_corr = sum(correlations)
+                self.attention_weights = np.array([
+                    corr / total_corr if total_corr > 0 else 1/X.shape[1] 
+                    for corr in correlations
+                ])
+                
+                # 应用注意力权重
+                weighted_X = X * self.attention_weights
+                
+                # 训练线性回归层
+                self.linear_layer.fit(weighted_X, y)
+                self.feature_importance = self.attention_weights * abs(self.linear_layer.coef_)
+                
+            def predict(self, X):
+                if self.attention_weights is None:
+                    return np.zeros(len(X))
+                
+                # 应用注意力权重并预测
+                weighted_X = X * self.attention_weights
+                return self.linear_layer.predict(weighted_X)
+                
+            def get_feature_importance(self):
+                return self.feature_importance if self.feature_importance is not None else np.array([])
+        
+        return SimpleAttentionModel()
     
     def train_ensemble_models(self, training_data: pd.DataFrame, 
                             features: List[str], target_col: str = 'future_return') -> Dict:
