@@ -22,6 +22,8 @@ from analysis.ensemble_prediction_engine import EnsemblePredictionEngine
 from analysis.time_series_validator import TimeSeriesValidator
 # 阶段三新增：增强时序验证器
 from analysis.enhanced_time_series_validator import EnhancedTimeSeriesValidator
+# 阶段四新增：A股市场特征增强器
+from analysis.ashare_market_enhancer import AShareMarketEnhancer
 
 class OptimizedDataAnalyzer:
     """优化版真实数据分析器，专门解决预测准确率低的问题"""
@@ -47,6 +49,8 @@ class OptimizedDataAnalyzer:
         self.time_series_validator = TimeSeriesValidator(self.logger)
         # 阶段三：初始化增强时序验证器（季节性感知）
         self.enhanced_ts_validator = EnhancedTimeSeriesValidator(self.logger)
+        # 阶段四：初始化A股市场特征增强器
+        self.ashare_enhancer = AShareMarketEnhancer(self.logger)
         
     async def analyze_prediction_accuracy_optimized(self, 
                                                   analysis_months: int = 2,
@@ -189,8 +193,10 @@ class OptimizedDataAnalyzer:
                 if df.empty or len(df) < 60:
                     continue
                 
-                # 使用高级特征工程
-                enhanced_df = self.advanced_feature_engineer.create_high_accuracy_features(df)
+                # 阶段四：应用A股市场特征增强
+                ashare_enhanced_df = self.ashare_enhancer.enhance_with_ashare_features(df, sector_name)
+                # 使用高级特征工程（在A股增强基础上）
+                enhanced_df = self.advanced_feature_engineer.create_high_accuracy_features(ashare_enhanced_df)
                 if enhanced_df.empty or len(enhanced_df) < 40:
                     continue
                 
@@ -252,7 +258,10 @@ class OptimizedDataAnalyzer:
                         'selected_features_count': len(selected_features),
                         'ensemble_models': ensemble_results.get('models_used', 0),
                         'ts_validation': ts_validation.get('summary', {}),
-                        'validation_consistency': ts_validation.get('consistency', 'unknown')
+                        'validation_consistency': ts_validation.get('consistency', 'unknown'),
+                        'stage': 4,  # 阶段四标识
+                        'ashare_features_enabled': True,
+                        'ashare_insights': self.ashare_enhancer.get_ashare_market_insights(enhanced_df)
                     })
                 else:
                     # 退回到传统方法
@@ -268,7 +277,10 @@ class OptimizedDataAnalyzer:
                             'confidence': signal_results.get('confidence', 0.5),
                             'signal_quality': signal_results.get('quality_metrics', {}),
                             'selected_features_count': len(selected_features),
-                            'ensemble_models': 0
+                            'ensemble_models': 0,
+                            'stage': 4,  # 阶段四标识
+                            'ashare_features_enabled': True,
+                            'ashare_insights': self.ashare_enhancer.get_ashare_market_insights(enhanced_df)
                         })
                 
                 # 高级成交量模式分析
@@ -889,8 +901,10 @@ class OptimizedDataAnalyzer:
                 if df.empty or len(df) < 60:
                     continue
                 
-                # 使用高级特征工程
-                enhanced_df = self.advanced_feature_engineer.create_high_accuracy_features(df)
+                # 阶段四：应用A股市场特征增强
+                ashare_enhanced_df = self.ashare_enhancer.enhance_with_ashare_features(df, sector_name)
+                # 使用高级特征工程（在A股增强基础上）
+                enhanced_df = self.advanced_feature_engineer.create_high_accuracy_features(ashare_enhanced_df)
                 if enhanced_df.empty or len(enhanced_df) < 40:
                     continue
                 
