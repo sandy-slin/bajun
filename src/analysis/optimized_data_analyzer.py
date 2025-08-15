@@ -16,6 +16,9 @@ from data.sector_fetcher import SectorFetcher
 from data.enhanced_data_fetcher import EnhancedDataFetcher
 from data.technical_calculator import TechnicalCalculator
 from data.advanced_feature_engineer import AdvancedFeatureEngineer
+from analysis.intelligent_feature_selector import IntelligentFeatureSelector
+from analysis.advanced_signal_filter import AdvancedSignalFilter
+from analysis.ensemble_prediction_engine import EnsemblePredictionEngine
 
 class OptimizedDataAnalyzer:
     """优化版真实数据分析器，专门解决预测准确率低的问题"""
@@ -31,6 +34,12 @@ class OptimizedDataAnalyzer:
         
         # 初始化高级特征工程器
         self.advanced_feature_engineer = AdvancedFeatureEngineer(self.logger)
+        # 初始化智能特征选择器
+        self.feature_selector = IntelligentFeatureSelector(self.logger)
+        # 初始化高级信号过滤器
+        self.signal_filter = AdvancedSignalFilter(self.logger)
+        # 初始化集成预测引擎
+        self.ensemble_engine = EnsemblePredictionEngine()
         
     async def analyze_prediction_accuracy_optimized(self, 
                                                   analysis_months: int = 2,
@@ -178,17 +187,61 @@ class OptimizedDataAnalyzer:
                 if enhanced_df.empty or len(enhanced_df) < 40:
                     continue
                 
+                # 智能特征选择
+                selected_features = self.feature_selector.select_optimal_features(
+                    enhanced_df, prediction_days=prediction_days, max_features=30
+                )
+                
+                if not selected_features:
+                    continue
+                
                 total_sectors_analyzed += 1
                 
-                # 增强动量模式分析
-                momentum_acc = self._analyze_enhanced_momentum(enhanced_df, prediction_days)
-                if momentum_acc > 50:  # 只考虑超过50%的准确率
+                # 使用信号过滤器分析
+                signal_results = self.signal_filter.filter_high_quality_signals(
+                    enhanced_df, selected_features, prediction_days
+                )
+                
+                # 使用集成预测引擎进行训练和预测
+                ensemble_results = self._apply_ensemble_prediction(
+                    enhanced_df, selected_features, prediction_days
+                )
+                
+                # 基于集成预测的增强分析
+                ensemble_accuracy = ensemble_results.get('accuracy', 0)
+                if ensemble_accuracy > 50:
+                    momentum_acc = max(
+                        self._analyze_enhanced_momentum_with_signals(
+                            enhanced_df, selected_features, signal_results, prediction_days
+                        ),
+                        ensemble_accuracy
+                    )
                     pattern_results['enhanced_momentum']['patterns'].append({
                         'sector': sector_name,
                         'accuracy': momentum_acc,
+                        'ensemble_accuracy': ensemble_accuracy,
                         'sample_size': len(enhanced_df),
-                        'confidence': self._calculate_confidence_score(enhanced_df, momentum_acc)
+                        'confidence': ensemble_results.get('confidence', 0.6),
+                        'signal_quality': signal_results.get('quality_metrics', {}),
+                        'selected_features_count': len(selected_features),
+                        'ensemble_models': ensemble_results.get('models_used', 0)
                     })
+                else:
+                    # 退回到传统方法
+                    momentum_acc = self._analyze_enhanced_momentum_with_signals(
+                        enhanced_df, selected_features, signal_results, prediction_days
+                    )
+                    if momentum_acc > 50:
+                        pattern_results['enhanced_momentum']['patterns'].append({
+                            'sector': sector_name,
+                            'accuracy': momentum_acc,
+                            'ensemble_accuracy': 0,
+                            'sample_size': len(enhanced_df),
+                            'confidence': signal_results.get('confidence', 0.5),
+                            'signal_quality': signal_results.get('quality_metrics', {}),
+                            'selected_features_count': len(selected_features),
+                            'ensemble_models': 0
+                        })
                 
                 # 高级成交量模式分析
                 volume_acc = self._analyze_advanced_volume(enhanced_df, prediction_days)
@@ -256,6 +309,138 @@ class OptimizedDataAnalyzer:
         except Exception as e:
             self.logger.error(f"优化版模式分析失败: {e}")
             return {'pattern_results': {}, 'sectors_analyzed': 0}
+    
+    def _analyze_enhanced_momentum_with_signals(self, df: pd.DataFrame, 
+                                              selected_features: List[str],
+                                              signal_results: Dict,
+                                              prediction_days: int) -> float:
+        """基于高质量信号的增强动量分析"""
+        try:
+            if len(df) < 20 or not selected_features:
+                return 0
+            
+            signals = signal_results.get('signals', {})
+            if not signals:
+                return self._analyze_enhanced_momentum(df, prediction_days)
+            
+            correct_predictions = 0
+            total_predictions = 0
+            
+            # 使用高质量信号进行预测
+            for i in range(len(df) - prediction_days - 15):
+                current_data = df.iloc[i:i+15]
+                future_price = df.iloc[i + 15 + prediction_days]['close']
+                current_price = df.iloc[i + 15]['close']
+                
+                # 收集高质量信号
+                high_quality_signals = []
+                signal_weights = []
+                
+                for feature in selected_features:
+                    if feature in signals and signals[feature].get('filter_passed', False):
+                        signal_info = signals[feature]
+                        direction = signal_info['direction']
+                        quality = signal_info.get('quality_score', 0.5)
+                        
+                        if abs(direction) > 0 and quality > 0.3:
+                            high_quality_signals.append(direction)
+                            signal_weights.append(quality)
+                
+                if high_quality_signals:
+                    # 加权预测
+                    if signal_weights:
+                        weighted_prediction = np.average(high_quality_signals, weights=signal_weights)
+                    else:
+                        weighted_prediction = np.mean(high_quality_signals)
+                    
+                    final_prediction = 1 if weighted_prediction > 0.2 else (-1 if weighted_prediction < -0.2 else 0)
+                    
+                    if final_prediction != 0:
+                        actual = 1 if future_price > current_price else -1
+                        if final_prediction == actual:
+                            correct_predictions += 1
+                        total_predictions += 1
+            
+            if total_predictions > 0:
+                accuracy = (correct_predictions / total_predictions) * 100
+                return accuracy
+            
+            # 退回到传统方法
+            return self._analyze_enhanced_momentum(df, prediction_days)
+            
+        except Exception as e:
+            self.logger.error(f"基于信号的增强动量分析失败: {e}")
+            return self._analyze_enhanced_momentum(df, prediction_days)
+    
+    def _apply_ensemble_prediction(self, df: pd.DataFrame, 
+                                 selected_features: List[str],
+                                 prediction_days: int) -> Dict:
+        """应用集成预测引擎"""
+        try:
+            if len(df) < 80 or not selected_features:
+                return {"accuracy": 0, "confidence": 0, "models_used": 0}
+            
+            # 准备训练和测试数据
+            train_size = int(len(df) * 0.7)
+            train_data = df.iloc[:train_size].copy()
+            test_data = df.iloc[train_size:].copy()
+            
+            # 创建目标变量
+            train_data['future_return'] = train_data['close'].shift(-prediction_days) / train_data['close'] - 1
+            test_data['future_return'] = test_data['close'].shift(-prediction_days) / test_data['close'] - 1
+            
+            # 移除最后几行（没有未来数据）
+            train_data = train_data.iloc[:-prediction_days]
+            test_data = test_data.iloc[:-prediction_days]
+            
+            if len(train_data) < 30 or len(test_data) < 10:
+                return {"accuracy": 0, "confidence": 0, "models_used": 0}
+            
+            # 训练集成模型
+            training_results = self.ensemble_engine.train_ensemble_models(
+                train_data, selected_features, 'future_return'
+            )
+            
+            if training_results.get('status') != 'success':
+                return {"accuracy": 0, "confidence": 0, "models_used": 0}
+            
+            # 在测试集上进行预测
+            prediction_results = self.ensemble_engine.predict(test_data, selected_features)
+            
+            if prediction_results.get('status') != 'success':
+                return {"accuracy": 0, "confidence": 0, "models_used": 0}
+            
+            # 计算测试集准确率
+            ensemble_predictions = np.array(prediction_results.get('ensemble_predictions', []))
+            actual_returns = test_data['future_return'].values
+            
+            if len(ensemble_predictions) == 0 or len(actual_returns) == 0:
+                return {"accuracy": 0, "confidence": 0, "models_used": 0}
+            
+            # 计算方向准确率
+            pred_directions = np.sign(ensemble_predictions)
+            actual_directions = np.sign(actual_returns)
+            
+            correct_predictions = np.sum(pred_directions == actual_directions)
+            total_predictions = len(pred_directions)
+            
+            accuracy = (correct_predictions / total_predictions * 100) if total_predictions > 0 else 0
+            
+            # 计算平均信心度
+            confidence_scores = prediction_results.get('confidence_scores', [])
+            avg_confidence = np.mean(confidence_scores) if confidence_scores else 0.5
+            
+            return {
+                "accuracy": accuracy,
+                "confidence": avg_confidence,
+                "models_used": training_results.get('models_trained', 0),
+                "test_samples": total_predictions,
+                "ensemble_training_accuracy": training_results.get('ensemble_accuracy', 0)
+            }
+            
+        except Exception as e:
+            self.logger.error(f"集成预测应用失败: {e}")
+            return {"accuracy": 0, "confidence": 0, "models_used": 0}
     
     def _analyze_enhanced_momentum(self, df: pd.DataFrame, prediction_days: int) -> float:
         """增强版动量分析"""
