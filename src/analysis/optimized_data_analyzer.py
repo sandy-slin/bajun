@@ -200,8 +200,8 @@ class OptimizedDataAnalyzer:
                 
                 total_sectors_analyzed += 1
                 
-                # 使用信号过滤器分析
-                signal_results = self.signal_filter.filter_high_quality_signals(
+                # 使用阶段二增强版信号过滤器分析
+                signal_results = self.signal_filter.filter_high_quality_signals_enhanced(
                     enhanced_df, selected_features, prediction_days
                 )
                 

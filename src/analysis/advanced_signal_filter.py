@@ -289,32 +289,52 @@ class AdvancedSignalFilter:
     def _optimize_dynamic_thresholds(self, strengths: Dict[str, float], 
                                    consistency: Dict[str, float],
                                    accuracy: Dict[str, float]) -> Dict[str, Dict]:
-        """优化动态阈值"""
+        """优化动态阈值 - 阶段二增强版"""
         try:
             thresholds = {}
+            
+            # 市场环境适应性阈值调整
+            market_volatility = self._calculate_market_volatility()
+            market_trend = self._identify_market_trend()
             
             for feature in strengths.keys():
                 strength = strengths.get(feature, 0.0)
                 consist = consistency.get(feature, 0.0)
                 acc = accuracy.get(feature, 0.5)
                 
-                # 基于历史表现调整阈值
-                base_threshold = 0.3  # 基础阈值
+                # 1. 基础阈值（根据特征类型动态调整）
+                base_threshold = self._get_adaptive_base_threshold(feature, market_volatility)
                 
-                # 准确率越高，阈值越低（更容易触发）
-                accuracy_adjustment = (acc - 0.5) * 0.4
+                # 2. 历史表现调整（更精细化）
+                accuracy_weight = 0.6 if acc > 0.6 else 0.3  # 高准确率特征权重更大
+                accuracy_adjustment = (acc - 0.5) * accuracy_weight
                 
-                # 一致性越高，阈值越低
-                consistency_adjustment = consist * 0.2
+                # 3. 一致性调整（考虑市场环境）
+                consistency_weight = 0.3 if market_volatility < 0.02 else 0.2  # 低波动市场更重视一致性
+                consistency_adjustment = consist * consistency_weight
                 
-                # 最终阈值
-                final_threshold = max(0.1, base_threshold - accuracy_adjustment - consistency_adjustment)
+                # 4. 市场趋势调整
+                trend_adjustment = self._get_trend_adjustment(feature, market_trend)
                 
+                # 5. 信号强度调整
+                strength_adjustment = (strength - 0.5) * 0.2
+                
+                # 最终阈值计算
+                final_threshold = max(0.05, min(0.8, 
+                    base_threshold - accuracy_adjustment - consistency_adjustment 
+                    + trend_adjustment - strength_adjustment
+                ))
+                
+                # 个性化阈值设置
                 thresholds[feature] = {
                     'strength_threshold': final_threshold,
-                    'consistency_threshold': max(0.3, 0.6 - acc * 0.6),
-                    'accuracy_threshold': 0.55,  # 最低准确率要求
-                    'combined_threshold': final_threshold * 0.7
+                    'consistency_threshold': max(0.2, 0.7 - acc * 0.8),
+                    'accuracy_threshold': max(0.52, 0.6 - market_volatility * 10),  # 波动大时降低准确率要求
+                    'combined_threshold': final_threshold * 0.6,
+                    'market_adjusted': True,
+                    'volatility_factor': market_volatility,
+                    'trend_factor': market_trend,
+                    'adaptive_weight': accuracy_weight + consistency_weight
                 }
             
             return thresholds
@@ -481,3 +501,386 @@ class AdvancedSignalFilter:
         except Exception as e:
             self.logger.error(f"计算整体置信度失败: {e}")
             return 0.0
+    
+    # ==================== 阶段二优化：高级动态阈值和信号过滤 ====================
+    
+    def _calculate_market_volatility(self) -> float:
+        """计算市场波动率 - 阶段二优化"""
+        try:
+            # 如果有历史数据，基于历史数据计算
+            if hasattr(self, 'current_data') and self.current_data is not None:
+                close_col = 'close' if 'close' in self.current_data.columns else None
+                if close_col and len(self.current_data) > 10:
+                    returns = self.current_data[close_col].pct_change().dropna()
+                    volatility = returns.rolling(10).std().iloc[-1]
+                    return volatility if not np.isnan(volatility) else 0.02
+            
+            # 默认市场波动率（基于A股历史经验）
+            return 0.025  # 2.5%日波动率
+            
+        except Exception as e:
+            self.logger.warning(f"计算市场波动率失败: {e}")
+            return 0.025
+    
+    def _identify_market_trend(self) -> str:
+        """识别市场趋势 - 阶段二优化"""
+        try:
+            # 如果有历史数据，基于价格趋势分析
+            if hasattr(self, 'current_data') and self.current_data is not None:
+                close_col = 'close' if 'close' in self.current_data.columns else None
+                if close_col and len(self.current_data) > 20:
+                    data = self.current_data[close_col]
+                    short_ma = data.rolling(5).mean().iloc[-1]
+                    long_ma = data.rolling(20).mean().iloc[-1]
+                    
+                    if short_ma > long_ma * 1.02:
+                        return 'bullish'
+                    elif short_ma < long_ma * 0.98:
+                        return 'bearish'
+                    else:
+                        return 'sideways'
+            
+            # 默认趋势
+            return 'sideways'
+            
+        except Exception as e:
+            self.logger.warning(f"识别市场趋势失败: {e}")
+            return 'sideways'
+    
+    def _get_adaptive_base_threshold(self, feature: str, market_volatility: float) -> float:
+        """获取自适应基础阈值 - 阶段二优化"""
+        try:
+            # 特征类型分类阈值
+            feature_lower = feature.lower()
+            
+            # 1. 动量类特征
+            if any(word in feature_lower for word in ['momentum', 'roc', 'return', 'change']):
+                base = 0.25 + market_volatility * 5  # 波动大时阈值更高
+            
+            # 2. 趋势类特征  
+            elif any(word in feature_lower for word in ['trend', 'ma_', 'ema', 'slope']):
+                base = 0.20 + market_volatility * 3
+            
+            # 3. 波动率类特征
+            elif any(word in feature_lower for word in ['volatility', 'std', 'atr', 'bbands']):
+                base = 0.35 + market_volatility * 2  # 波动率特征需要更高阈值
+            
+            # 4. 成交量类特征
+            elif any(word in feature_lower for word in ['volume', 'obv', 'mfi', 'money_flow']):
+                base = 0.30 + market_volatility * 4
+            
+            # 5. 市场情绪类特征（阶段一新增）
+            elif any(word in feature_lower for word in ['sentiment', 'fear', 'northbound', 'margin']):
+                base = 0.28 + market_volatility * 6  # 情绪类特征对波动更敏感
+            
+            # 6. 技术指标类
+            elif any(word in feature_lower for word in ['rsi', 'macd', 'kdj', 'cci', 'williams']):
+                base = 0.25 + market_volatility * 3
+            
+            # 默认阈值
+            else:
+                base = 0.30 + market_volatility * 4
+            
+            return max(0.1, min(0.6, base))
+            
+        except Exception as e:
+            self.logger.warning(f"获取自适应基础阈值失败: {e}")
+            return 0.30
+    
+    def _get_trend_adjustment(self, feature: str, market_trend: str) -> float:
+        """获取趋势调整系数 - 阶段二优化"""
+        try:
+            feature_lower = feature.lower()
+            
+            # 趋势调整系数
+            if market_trend == 'bullish':
+                # 牛市环境：适当放宽买入信号阈值，收紧卖出信号阈值
+                if any(word in feature_lower for word in ['momentum', 'trend', 'ma_']):
+                    return -0.05  # 降低阈值，更容易触发买入信号
+                elif any(word in feature_lower for word in ['sentiment', 'fear']):
+                    return -0.08  # 情绪类在牛市中信号更可靠
+                else:
+                    return -0.03
+                    
+            elif market_trend == 'bearish':
+                # 熊市环境：收紧买入信号阈值，适当放宽卖出信号阈值
+                if any(word in feature_lower for word in ['momentum', 'trend']):
+                    return +0.05  # 提高阈值，避免假突破
+                elif any(word in feature_lower for word in ['volatility', 'fear']):
+                    return -0.05  # 波动率和恐慌指标在熊市更重要
+                else:
+                    return +0.03
+                    
+            else:  # sideways
+                # 震荡市：均衡策略，稍微收紧阈值
+                return +0.02
+                
+        except Exception as e:
+            self.logger.warning(f"获取趋势调整失败: {e}")
+            return 0.0
+    
+    def _apply_advanced_filtering(self, raw_signals: Dict[str, Dict],
+                                signal_strengths: Dict[str, float],
+                                consistency_scores: Dict[str, float],
+                                historical_accuracy: Dict[str, float],
+                                optimized_thresholds: Dict[str, Dict]) -> Dict[str, Dict]:
+        """应用高级过滤 - 阶段二增强版"""
+        try:
+            filtered_signals = {}
+            
+            # 1. 信号相关性分析
+            correlation_matrix = self._calculate_signal_correlations(raw_signals)
+            
+            # 2. 信号权重动态调整
+            dynamic_weights = self._calculate_dynamic_weights(
+                historical_accuracy, consistency_scores, signal_strengths
+            )
+            
+            # 3. 市场环境分类过滤
+            market_environment = self._classify_market_environment()
+            
+            for feature, signal_data in raw_signals.items():
+                if feature not in optimized_thresholds:
+                    continue
+                
+                thresholds = optimized_thresholds[feature]
+                strength = signal_strengths.get(feature, 0.0)
+                consistency = consistency_scores.get(feature, 0.0)
+                accuracy = historical_accuracy.get(feature, 0.5)
+                
+                # 基础过滤条件
+                passes_strength = strength >= thresholds['strength_threshold']
+                passes_consistency = consistency >= thresholds['consistency_threshold']
+                passes_accuracy = accuracy >= thresholds['accuracy_threshold']
+                
+                # 相关性过滤：避免过度相关的信号
+                passes_correlation = self._check_correlation_filter(
+                    feature, filtered_signals, correlation_matrix
+                )
+                
+                # 市场环境适应性过滤
+                passes_environment = self._check_environment_filter(
+                    feature, signal_data, market_environment
+                )
+                
+                # 综合质量评分
+                quality_score = (
+                    strength * 0.3 + 
+                    consistency * 0.25 + 
+                    accuracy * 0.25 + 
+                    dynamic_weights.get(feature, 0.5) * 0.2
+                )
+                
+                # 最终过滤决策
+                if (passes_strength and passes_consistency and passes_accuracy and 
+                    passes_correlation and passes_environment and quality_score > 0.5):
+                    
+                    filtered_signals[feature] = {
+                        'direction': signal_data['direction'],
+                        'strength': strength,
+                        'consistency': consistency,
+                        'accuracy': accuracy,
+                        'quality_score': quality_score,
+                        'dynamic_weight': dynamic_weights.get(feature, 0.5),
+                        'filter_passed': True,
+                        'environment_adapted': True
+                    }
+            
+            self.logger.info(f"高级过滤完成: {len(raw_signals)} -> {len(filtered_signals)} 信号")
+            return filtered_signals
+            
+        except Exception as e:
+            self.logger.error(f"高级过滤失败: {e}")
+            return raw_signals
+    
+    def _calculate_signal_correlations(self, signals: Dict[str, Dict]) -> Dict[str, Dict[str, float]]:
+        """计算信号间相关性 - 阶段二优化"""
+        try:
+            correlations = {}
+            signal_names = list(signals.keys())
+            
+            for i, signal1 in enumerate(signal_names):
+                correlations[signal1] = {}
+                for j, signal2 in enumerate(signal_names):
+                    if i != j:
+                        # 基于信号方向和强度计算相关性
+                        dir1 = signals[signal1].get('direction', 0)
+                        dir2 = signals[signal2].get('direction', 0)
+                        str1 = signals[signal1].get('raw_strength', 0)
+                        str2 = signals[signal2].get('raw_strength', 0)
+                        
+                        # 简化相关性计算
+                        correlation = (dir1 * dir2) * min(abs(str1), abs(str2))
+                        correlations[signal1][signal2] = correlation
+                    else:
+                        correlations[signal1][signal2] = 1.0
+            
+            return correlations
+            
+        except Exception as e:
+            self.logger.warning(f"计算信号相关性失败: {e}")
+            return {}
+    
+    def _calculate_dynamic_weights(self, accuracy: Dict[str, float],
+                                 consistency: Dict[str, float],
+                                 strength: Dict[str, float]) -> Dict[str, float]:
+        """计算动态权重 - 阶段二优化"""
+        try:
+            weights = {}
+            
+            for feature in accuracy.keys():
+                acc = accuracy.get(feature, 0.5)
+                cons = consistency.get(feature, 0.5)
+                str_val = strength.get(feature, 0.5)
+                
+                # 历史成功率驱动的权重
+                success_weight = (acc - 0.5) * 2  # 准确率超过50%的部分放大
+                
+                # 一致性加权
+                consistency_weight = cons * 0.5
+                
+                # 信号强度加权
+                strength_weight = str_val * 0.3
+                
+                # 综合动态权重
+                dynamic_weight = max(0.1, min(1.0, 
+                    0.5 + success_weight + consistency_weight + strength_weight
+                ))
+                
+                weights[feature] = dynamic_weight
+                
+            return weights
+            
+        except Exception as e:
+            self.logger.warning(f"计算动态权重失败: {e}")
+            return {}
+    
+    def _classify_market_environment(self) -> str:
+        """分类市场环境 - 阶段二优化"""
+        try:
+            trend = self._identify_market_trend()
+            volatility = self._calculate_market_volatility()
+            
+            # 基于趋势和波动率分类
+            if trend == 'bullish' and volatility < 0.02:
+                return 'stable_bull'
+            elif trend == 'bullish' and volatility >= 0.02:
+                return 'volatile_bull'
+            elif trend == 'bearish' and volatility < 0.02:
+                return 'stable_bear'
+            elif trend == 'bearish' and volatility >= 0.02:
+                return 'volatile_bear'
+            elif volatility < 0.015:
+                return 'low_volatility_sideways'
+            else:
+                return 'high_volatility_sideways'
+                
+        except Exception as e:
+            self.logger.warning(f"分类市场环境失败: {e}")
+            return 'neutral'
+    
+    def _check_correlation_filter(self, feature: str, existing_signals: Dict[str, Dict],
+                                correlation_matrix: Dict[str, Dict[str, float]]) -> bool:
+        """检查相关性过滤 - 阶段二优化"""
+        try:
+            if not existing_signals or feature not in correlation_matrix:
+                return True
+            
+            max_correlation = 0.0
+            for existing_feature in existing_signals.keys():
+                if existing_feature in correlation_matrix[feature]:
+                    correlation = abs(correlation_matrix[feature][existing_feature])
+                    max_correlation = max(max_correlation, correlation)
+            
+            # 如果与已有信号相关性过高，则过滤掉
+            return max_correlation < 0.85
+            
+        except Exception as e:
+            self.logger.warning(f"相关性过滤检查失败: {e}")
+            return True
+    
+    def _check_environment_filter(self, feature: str, signal_data: Dict,
+                                market_environment: str) -> bool:
+        """检查环境过滤 - 阶段二优化"""
+        try:
+            feature_lower = feature.lower()
+            direction = signal_data.get('direction', 0)
+            
+            # 根据市场环境调整信号可信度
+            if market_environment in ['stable_bull', 'volatile_bull']:
+                # 牛市环境：看涨信号更可信
+                if direction > 0:
+                    return True
+                elif any(word in feature_lower for word in ['fear', 'volatility']):
+                    return False  # 牛市中恐慌和高波动信号不可信
+                    
+            elif market_environment in ['stable_bear', 'volatile_bear']:
+                # 熊市环境：看跌信号更可信
+                if direction < 0:
+                    return True
+                elif any(word in feature_lower for word in ['momentum', 'trend']):
+                    return abs(direction) > 0.5  # 熊市中需要更强的信号
+                    
+            elif 'sideways' in market_environment:
+                # 震荡市：均衡策略，需要更强的信号
+                return abs(direction) > 0.3
+                
+            return True
+            
+        except Exception as e:
+            self.logger.warning(f"环境过滤检查失败: {e}")
+            return True
+    
+    def filter_high_quality_signals_enhanced(self, data: pd.DataFrame, 
+                                           selected_features: List[str],
+                                           prediction_days: int = 5) -> Dict:
+        """增强版信号过滤入口 - 阶段二完整版"""
+        try:
+            # 保存当前数据用于市场环境分析
+            self.current_data = data
+            
+            # 调用增强版过滤流程
+            result = self.filter_high_quality_signals(data, selected_features, prediction_days)
+            
+            # 添加阶段二特有的质量指标
+            if result['signals']:
+                enhanced_metrics = self._calculate_enhanced_quality_metrics(result['signals'])
+                result['quality_metrics'].update(enhanced_metrics)
+                result['stage_two_enhanced'] = True
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"增强版信号过滤失败: {e}")
+            return self.filter_high_quality_signals(data, selected_features, prediction_days)
+    
+    def _calculate_enhanced_quality_metrics(self, signals: Dict[str, Dict]) -> Dict:
+        """计算增强质量指标 - 阶段二专用"""
+        try:
+            if not signals:
+                return {}
+            
+            # 权重分布分析
+            weights = [s.get('dynamic_weight', 0.5) for s in signals.values()]
+            weight_variance = np.var(weights) if weights else 0
+            
+            # 环境适应性评分
+            environment_adapted = sum(1 for s in signals.values() if s.get('environment_adapted', False))
+            adaptation_rate = environment_adapted / len(signals)
+            
+            # 质量评分分布
+            quality_scores = [s.get('quality_score', 0.5) for s in signals.values()]
+            avg_quality = np.mean(quality_scores) if quality_scores else 0.5
+            quality_std = np.std(quality_scores) if quality_scores else 0
+            
+            return {
+                'dynamic_weight_variance': weight_variance,
+                'environment_adaptation_rate': adaptation_rate,
+                'average_quality_score': avg_quality,
+                'quality_score_stability': 1.0 - min(quality_std, 0.3) / 0.3,
+                'enhanced_filtering_applied': True
+            }
+            
+        except Exception as e:
+            self.logger.warning(f"计算增强质量指标失败: {e}")
+            return {}
