@@ -25,6 +25,7 @@ from analysis.model_optimizer import ModelOptimizer
 from analysis.ml_predictor import MLPredictor
 from analysis.advanced_validator import AdvancedValidator
 from analysis.real_data_analyzer import RealDataAnalyzer
+from analysis.optimized_data_analyzer import OptimizedDataAnalyzer
 from analysis.report_manager import ReportManager
 from config.settings import Settings
 
@@ -95,6 +96,13 @@ class StockInfoSystem:
         
         # 添加真实数据分析器
         self.real_data_analyzer = RealDataAnalyzer(
+            self.sector_fetcher,
+            self.enhanced_data_fetcher,
+            self.tech_calculator
+        )
+        
+        # 添加优化版数据分析器
+        self.optimized_analyzer = OptimizedDataAnalyzer(
             self.sector_fetcher,
             self.enhanced_data_fetcher,
             self.tech_calculator
@@ -259,6 +267,26 @@ class StockInfoSystem:
         except Exception as e:
             logging.error(f"真实数据分析失败: {e}")
             return {'error': str(e)}
+            
+    async def run_optimized_analysis(self, analysis_months: int = 2,
+                                   prediction_days: int = 5) -> dict:
+        """运行优化版高准确率分析流程"""
+        try:
+            result = await self.optimized_analyzer.analyze_prediction_accuracy_optimized(
+                analysis_months=analysis_months,
+                prediction_days=prediction_days
+            )
+            
+            # 保存优化报告
+            if 'error' not in result:
+                report_path = await self.optimized_analyzer.save_optimization_report(result)
+                result['report_path'] = report_path
+                
+            return result
+            
+        except Exception as e:
+            logging.error(f"优化版分析失败: {e}")
+            return {'error': str(e)}
 
 
 def setup_logging():
@@ -323,6 +351,13 @@ async def main():
                        help='分析历史数据月数 (default: 12)')
     parser.add_argument('--pattern-prediction-days', type=int, default=5,
                        help='模式分析预测天数 (default: 5)')
+    
+    # 优化版分析相关参数
+    parser.add_argument('--optimized-analysis', action='store_true', help='优化版高准确率分析功能')
+    parser.add_argument('--opt-analysis-months', type=int, default=2,
+                       help='优化分析历史数据月数 (default: 2)')
+    parser.add_argument('--opt-prediction-days', type=int, default=5,
+                       help='优化分析预测天数 (default: 5)')
     
     # ML模型评估相关参数
     parser.add_argument('--ml-evaluation', action='store_true', help='机器学习模型性能评估功能')
@@ -771,8 +806,73 @@ async def main():
             
         return
     
+    # 处理优化版分析命令
+    if args.optimized_analysis:
+        print(f"=== 开始优化版高准确率分析 ===")
+        print(f"分析历史数据: {args.opt_analysis_months}个月")
+        print(f"预测时间窗口: {args.opt_prediction_days}天")
+        print("正在进行高级特征工程和优化分析...请耐心等待")
+        
+        result = await system.run_optimized_analysis(
+            analysis_months=args.opt_analysis_months,
+            prediction_days=args.opt_prediction_days
+        )
+        
+        if 'error' in result:
+            print(f"❌ 优化分析失败: {result['error']}")
+            return
+            
+        # 显示优化结果
+        print(f"\n=== 优化分析结果 ===")
+        print(f"分析板块数: {result.get('sectors_analyzed', 0)}")
+        
+        # 优化指标
+        opt_metrics = result.get('optimization_metrics', {})
+        if opt_metrics:
+            print(f"\n=== 优化性能指标 ===")
+            if 'overall_optimization_score' in opt_metrics:
+                print(f"综合优化得分: {opt_metrics['overall_optimization_score']:.1f}/100")
+                print(f"优化等级: {opt_metrics.get('optimization_grade', 'Unknown')}")
+            
+            if 'validation_metrics' in opt_metrics:
+                vm = opt_metrics['validation_metrics']
+                print(f"方向预测准确率: {vm.get('direction_accuracy', 0):.1f}%")
+                print(f"强信号准确率: {vm.get('strong_signal_accuracy', 0):.1f}%")
+                print(f"预测稳定性: {vm.get('accuracy_stability', 0):.1f}%")
+        
+        # 有效模式
+        effective_patterns = result.get('effective_patterns', {})
+        if effective_patterns:
+            print(f"\n=== 优化模式识别 ===")
+            for pattern_type, pattern_data in effective_patterns.items():
+                if pattern_data.get('avg_accuracy', 0) > 50:
+                    pattern_name = pattern_type.replace('_', ' ').title()
+                    print(f"{pattern_name}: {pattern_data.get('avg_accuracy', 0):.1f}%")
+        
+        # 收益验证
+        return_validation = result.get('return_validation', {}).get('overall_validation', {})
+        if return_validation:
+            print(f"\n=== 高精度收益验证 ===")
+            print(f"整体方向准确率: {return_validation.get('avg_direction_accuracy', 0):.1f}%")
+            print(f"强信号准确率: {return_validation.get('avg_strong_signal_accuracy', 0):.1f}%")
+            print(f"最佳板块准确率: {return_validation.get('best_sector_accuracy', 0):.1f}%")
+            print(f"模式有效性: {return_validation.get('pattern_effectiveness', 'unknown')}")
+        
+        # 智能改进策略
+        strategies = result.get('improvement_strategies', [])
+        if strategies:
+            print(f"\n=== 智能改进策略 ===")
+            for i, strategy in enumerate(strategies[:5], 1):
+                print(f"{i}. {strategy}")
+        
+        # 报告路径
+        if result.get('report_path'):
+            print(f"\n📝 优化分析报告已保存: {result['report_path']}")
+            
+        return
+    
     # 执行股票分析
-    if args.stock or not any([args.sector_screening, args.list_sectors, args.sector_summary, args.sector_analysis, args.sector_backtest, args.prediction_validation, args.model_optimization, args.ml_training, args.ml_evaluation, args.real_data_analysis]):
+    if args.stock or not any([args.sector_screening, args.list_sectors, args.sector_summary, args.sector_analysis, args.sector_backtest, args.prediction_validation, args.model_optimization, args.ml_training, args.ml_evaluation, args.real_data_analysis, args.optimized_analysis]):
         result = await system.run_analysis(args.stock)
         
         if result['status'] == 'success':
