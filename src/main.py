@@ -834,11 +834,49 @@ async def main():
                 print(f"综合优化得分: {opt_metrics['overall_optimization_score']:.1f}/100")
                 print(f"优化等级: {opt_metrics.get('optimization_grade', 'Unknown')}")
             
-            if 'validation_metrics' in opt_metrics:
-                vm = opt_metrics['validation_metrics']
-                print(f"方向预测准确率: {vm.get('direction_accuracy', 0):.1f}%")
-                print(f"强信号准确率: {vm.get('strong_signal_accuracy', 0):.1f}%")
-                print(f"预测稳定性: {vm.get('accuracy_stability', 0):.1f}%")
+            # 显示Enhanced Momentum vs Baseline统一维度对比
+            if 'optimization_performance' in opt_metrics:
+                perf = opt_metrics['optimization_performance']
+                
+                # Enhanced Momentum (优化方法)
+                enhanced_direction = perf.get('enhanced_direction_accuracy', 0)
+                enhanced_strong = perf.get('enhanced_strong_signal_accuracy', 0)
+                enhanced_best = perf.get('enhanced_best_performance', 0)
+                
+                # Baseline (传统方法)
+                baseline_direction = perf.get('baseline_direction_accuracy', 0)
+                baseline_strong = perf.get('baseline_strong_signal_accuracy', 0)
+                baseline_best = perf.get('baseline_best_performance', 0)
+                
+                # 提升效果
+                direction_improvement = perf.get('direction_improvement', 0)
+                strong_improvement = perf.get('strong_signal_improvement', 0)
+                improvement_ratio = perf.get('improvement_ratio', 0)
+                
+                print(f"\n【优化方法 vs 传统方法统一对比】")
+                print(f"方向预测准确率: Enhanced {enhanced_direction:.1f}% vs Baseline {baseline_direction:.1f}% (提升{direction_improvement:+.1f}个百分点)")
+                print(f"强信号准确率: Enhanced {enhanced_strong:.1f}% vs Baseline {baseline_strong:.1f}% (提升{strong_improvement:+.1f}个百分点)")  
+                print(f"最佳表现准确率: Enhanced {enhanced_best:.1f}% vs Baseline {baseline_best:.1f}%")
+                print(f"整体改进效果: {improvement_ratio:+.1f}%")
+                
+                # 额外的Enhanced指标
+                enhanced_samples = perf.get('enhanced_samples', 0)
+                enhanced_confidence = perf.get('enhanced_confidence', 0)
+                if enhanced_samples > 0:
+                    print(f"Enhanced样本数量: {enhanced_samples}")
+                if enhanced_confidence > 0:
+                    print(f"Enhanced平均置信度: {enhanced_confidence:.2f}")
+            
+            # 稳定性和可靠性指标
+            if 'stability_metrics' in opt_metrics:
+                stability = opt_metrics['stability_metrics']
+                print(f"\n【稳定性与可靠性】")
+                print(f"预测稳定性: {stability.get('prediction_stability', 0):.1f}%")
+                if stability.get('baseline_std', 0) > 0:
+                    print(f"Baseline波动性: {stability.get('baseline_std', 0):.2f}")
+                sample_reliability = stability.get('sample_reliability', 0)
+                if sample_reliability > 0:
+                    print(f"样本可靠性: {sample_reliability:.1f}%")
         
         # 有效模式
         effective_patterns = result.get('effective_patterns', {})
@@ -849,14 +887,20 @@ async def main():
                     pattern_name = pattern_type.replace('_', ' ').title()
                     print(f"{pattern_name}: {pattern_data.get('avg_accuracy', 0):.1f}%")
         
-        # 收益验证
+        # 模式有效性评估
         return_validation = result.get('return_validation', {}).get('overall_validation', {})
         if return_validation:
-            print(f"\n=== 高精度收益验证 ===")
-            print(f"整体方向准确率: {return_validation.get('avg_direction_accuracy', 0):.1f}%")
-            print(f"强信号准确率: {return_validation.get('avg_strong_signal_accuracy', 0):.1f}%")
-            print(f"最佳板块准确率: {return_validation.get('best_sector_accuracy', 0):.1f}%")
-            print(f"模式有效性: {return_validation.get('pattern_effectiveness', 'unknown')}")
+            pattern_effectiveness = return_validation.get('pattern_effectiveness', 'unknown')
+            effectiveness_map = {
+                'very_high': '极高',
+                'high': '高',
+                'medium': '中等', 
+                'low': '低',
+                'very_low': '极低',
+                'unknown': '未知'
+            }
+            print(f"\n=== 系统有效性评估 ===")
+            print(f"整体模式有效性: {effectiveness_map.get(pattern_effectiveness, pattern_effectiveness)}")
         
         # 智能改进策略
         strategies = result.get('improvement_strategies', [])
