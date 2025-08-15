@@ -22,6 +22,9 @@ from analysis.sector_backtester import SectorBacktester
 from analysis.enhanced_predictor import EnhancedPredictor
 from analysis.prediction_validator import PredictionValidator
 from analysis.model_optimizer import ModelOptimizer
+from analysis.ml_predictor import MLPredictor
+from analysis.advanced_validator import AdvancedValidator
+from analysis.real_data_analyzer import RealDataAnalyzer
 from analysis.report_manager import ReportManager
 from config.settings import Settings
 
@@ -73,6 +76,25 @@ class StockInfoSystem:
         
         # 添加模型优化器
         self.model_optimizer = ModelOptimizer(
+            self.sector_fetcher,
+            self.enhanced_data_fetcher,
+            self.tech_calculator
+        )
+        
+        # 添加机器学习预测器
+        self.ml_predictor = MLPredictor(
+            self.sector_fetcher,
+            self.tech_calculator
+        )
+        
+        # 添加高级验证器
+        self.advanced_validator = AdvancedValidator(
+            self.data_fetcher,
+            self.sector_analyzer
+        )
+        
+        # 添加真实数据分析器
+        self.real_data_analyzer = RealDataAnalyzer(
             self.sector_fetcher,
             self.enhanced_data_fetcher,
             self.tech_calculator
@@ -191,6 +213,52 @@ class StockInfoSystem:
         except Exception as e:
             logging.error(f"模型优化失败: {e}")
             return {'status': 'error', 'message': str(e)}
+            
+    async def run_ml_training(self, training_months: int = 24, 
+                            prediction_horizon: int = 5) -> dict:
+        """运行机器学习模型训练流程"""
+        try:
+            result = await self.ml_predictor.train_models_on_real_data(
+                training_months=training_months,
+                prediction_horizon=prediction_horizon
+            )
+            return result
+            
+        except Exception as e:
+            logging.error(f"ML模型训练失败: {e}")
+            return {'error': str(e)}
+            
+    async def run_ml_evaluation(self, evaluation_months: int = 6) -> dict:
+        """运行机器学习模型评估流程"""
+        try:
+            result = await self.ml_predictor.evaluate_model_performance_on_real_data(
+                evaluation_months=evaluation_months
+            )
+            return result
+            
+        except Exception as e:
+            logging.error(f"ML模型评估失败: {e}")
+            return {'error': str(e)}
+            
+    async def run_real_data_analysis(self, analysis_months: int = 12,
+                                   prediction_days: int = 5) -> dict:
+        """运行基于真实数据的深度分析流程"""
+        try:
+            result = await self.real_data_analyzer.analyze_prediction_accuracy_by_real_patterns(
+                analysis_months=analysis_months,
+                prediction_days=prediction_days
+            )
+            
+            # 保存分析报告
+            if 'error' not in result:
+                report_path = await self.real_data_analyzer.save_real_data_analysis_report(result)
+                result['report_path'] = report_path
+                
+            return result
+            
+        except Exception as e:
+            logging.error(f"真实数据分析失败: {e}")
+            return {'error': str(e)}
 
 
 def setup_logging():
@@ -241,6 +309,25 @@ async def main():
                        help='优化轮数 (default: 5)')
     parser.add_argument('--optimization-validation-periods', type=int, default=8,
                        help='优化验证期数 (default: 8)')
+    
+    # 机器学习相关参数
+    parser.add_argument('--ml-training', action='store_true', help='机器学习模型训练功能')
+    parser.add_argument('--training-months', type=int, default=24,
+                       help='训练数据月数 (default: 24)')
+    parser.add_argument('--prediction-horizon', type=int, default=5,
+                       help='预测时间窗口天数 (default: 5)')
+    
+    # 真实数据分析相关参数
+    parser.add_argument('--real-data-analysis', action='store_true', help='基于真实数据的深度分析功能')
+    parser.add_argument('--analysis-months', type=int, default=12,
+                       help='分析历史数据月数 (default: 12)')
+    parser.add_argument('--pattern-prediction-days', type=int, default=5,
+                       help='模式分析预测天数 (default: 5)')
+    
+    # ML模型评估相关参数
+    parser.add_argument('--ml-evaluation', action='store_true', help='机器学习模型性能评估功能')
+    parser.add_argument('--evaluation-months', type=int, default=6,
+                       help='评估数据月数 (default: 6)')
     
     args = parser.parse_args()
     
@@ -563,8 +650,129 @@ async def main():
             
         return
     
+    # 处理机器学习训练命令
+    if args.ml_training:
+        print(f"=== 开始机器学习模型训练 ===")
+        print(f"训练数据月数: {args.training_months}")
+        print(f"预测时间窗口: {args.prediction_horizon}天")
+        print("正在训练多个机器学习模型...请耐心等待")
+        
+        result = await system.run_ml_training(
+            training_months=args.training_months,
+            prediction_horizon=args.prediction_horizon
+        )
+        
+        if 'error' in result:
+            print(f"❌ 训练失败: {result['error']}")
+            return
+            
+        # 显示训练结果
+        print(f"\n=== 训练完成 ===")
+        print(f"训练模型数: {result.get('models_trained', 0)}")
+        print(f"最佳模型: {result.get('best_model', 'Unknown')}")
+        print(f"训练样本数: {result.get('training_data_summary', {}).get('total_samples', 0)}")
+        
+        # 显示模型性能
+        performances = result.get('model_performances', {})
+        if performances:
+            print(f"\n=== 模型性能 ===")
+            for model_name, perf in performances.items():
+                if 'error' not in perf:
+                    print(f"{model_name}:")
+                    print(f"  方向准确率: {perf.get('direction_accuracy', 0):.1f}%")
+                    print(f"  R²得分: {perf.get('train_r2', 0):.3f}")
+                    print(f"  训练样本: {perf.get('training_samples', 0)}")
+                    
+        print(f"\n📝 模型已保存到 models/ 目录")
+        return
+    
+    # 处理机器学习评估命令
+    if args.ml_evaluation:
+        print(f"=== 开始机器学习模型评估 ===")
+        print(f"评估数据月数: {args.evaluation_months}")
+        print("正在评估模型性能...请耐心等待")
+        
+        result = await system.run_ml_evaluation(
+            evaluation_months=args.evaluation_months
+        )
+        
+        if 'error' in result:
+            print(f"❌ 评估失败: {result['error']}")
+            return
+            
+        # 显示评估结果
+        print(f"\n=== 评估结果 ===")
+        print(f"评估板块数: {result.get('sectors_evaluated', 0)}")
+        
+        overall_perf = result.get('overall_performance', {})
+        if overall_perf:
+            print(f"平均方向准确率: {overall_perf.get('avg_direction_accuracy', 0):.1f}%")
+            print(f"平均相关系数: {overall_perf.get('avg_correlation', 0):.3f}")
+            print(f"最佳板块准确率: {overall_perf.get('best_sector_accuracy', 0):.1f}%")
+            print(f"最差板块准确率: {overall_perf.get('worst_sector_accuracy', 0):.1f}%")
+            print(f"总评估样本: {overall_perf.get('total_samples', 0)}")
+            
+        return
+    
+    # 处理真实数据分析命令
+    if args.real_data_analysis:
+        print(f"=== 开始基于真实数据的深度分析 ===")
+        print(f"分析历史数据: {args.analysis_months}个月")
+        print(f"模式预测天数: {args.pattern_prediction_days}天")
+        print("正在分析真实市场数据模式...请耐心等待")
+        
+        result = await system.run_real_data_analysis(
+            analysis_months=args.analysis_months,
+            prediction_days=args.pattern_prediction_days
+        )
+        
+        if 'error' in result:
+            print(f"❌ 分析失败: {result['error']}")
+            return
+            
+        # 显示分析结果
+        print(f"\n=== 真实数据分析结果 ===")
+        print(f"分析板块数: {result.get('sectors_analyzed', 0)}")
+        
+        # 有效模式
+        effective_patterns = result.get('effective_patterns', {})
+        if effective_patterns:
+            print(f"\n=== 有效模式识别 ===")
+            momentum_eff = effective_patterns.get('momentum_effectiveness', {})
+            if momentum_eff.get('avg_accuracy', 0) > 0:
+                print(f"动量模式平均准确率: {momentum_eff['avg_accuracy']:.1f}%")
+                
+            volume_eff = effective_patterns.get('volume_effectiveness', {})
+            if volume_eff.get('avg_accuracy', 0) > 0:
+                print(f"成交量模式平均准确率: {volume_eff['avg_accuracy']:.1f}%")
+                
+            trend_eff = effective_patterns.get('trend_effectiveness', {})
+            if trend_eff.get('avg_accuracy', 0) > 0:
+                print(f"趋势模式平均准确率: {trend_eff['avg_accuracy']:.1f}%")
+        
+        # 收益验证
+        return_validation = result.get('return_validation', {}).get('overall_validation', {})
+        if return_validation:
+            print(f"\n=== 真实收益验证 ===")
+            print(f"平均方向准确率: {return_validation.get('avg_direction_accuracy', 0):.1f}%")
+            print(f"强信号准确率: {return_validation.get('avg_strong_signal_accuracy', 0):.1f}%")
+            print(f"模式有效性: {return_validation.get('pattern_effectiveness', 'unknown')}")
+        
+        # 改进策略
+        strategies = result.get('improvement_strategies', [])
+        if strategies:
+            print(f"\n=== 改进策略建议 ===")
+            for i, strategy in enumerate(strategies[:5], 1):
+                print(f"{i}. {strategy}")
+        
+        # 报告路径
+        if result.get('report_path'):
+            print(f"\n📝 详细分析报告已保存: {result['report_path']}")
+            
+        return
+    
     # 执行股票分析
-    if args.stock or not any([args.sector_screening, args.list_sectors, args.sector_summary, args.sector_analysis, args.sector_backtest, args.prediction_validation, args.model_optimization]):
+    if args.stock or not any([args.sector_screening, args.list_sectors, args.sector_summary, args.sector_analysis, args.sector_backtest, args.prediction_validation, args.model_optimization, args.ml_training, args.ml_evaluation, args.real_data_analysis]):
         result = await system.run_analysis(args.stock)
         
         if result['status'] == 'success':
