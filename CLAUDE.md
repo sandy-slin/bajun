@@ -7,7 +7,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is an A-share (Chinese stock market) analysis system that fetches trading data and performs AI-powered analysis using the DeepSeek LLM API. The system provides comprehensive stock analysis including historical data retrieval, event analysis, technical analysis, and trading recommendations.
 
 ## Code Rules
-please refer to prompts/arch.md
+Please refer to prompts/arch.md
+
+## Continue to Summary User Requirement
+During developing, please summary user's input to docs/user_input/requirement.md if content related to project definition or requirement update.  
+If updated content exists some conflict with old content, please resolve the conflict.
+
+## Tools Use
+Please use python3.
 
 ## Architecture
 

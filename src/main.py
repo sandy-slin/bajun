@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 A股基本信息获取系统主程序
 提供命令行接口和核心业务逻辑协调
@@ -7,11 +8,16 @@ A股基本信息获取系统主程序
 import argparse
 import asyncio
 import logging
-from typing import Optional
+from typing import Optional, List
 
 from data.fetcher import DataFetcher
+from data.sector_fetcher import SectorFetcher
+from data.technical_calculator import TechnicalCalculator
 from cache.manager import CacheManager
 from analysis.llm_analyzer import LLMAnalyzer
+from analysis.sector_screener import SectorScreener
+from analysis.sector_analyzer import SectorAnalyzer
+from analysis.report_manager import ReportManager
 from config.settings import Settings
 
 
@@ -23,6 +29,21 @@ class StockInfoSystem:
         self.cache_manager = CacheManager(self.settings.cache_dir)
         self.data_fetcher = DataFetcher(self.cache_manager)
         self.llm_analyzer = LLMAnalyzer(self.settings.deepseek_api_key)
+        
+        # 新增板块相关组件
+        self.sector_fetcher = SectorFetcher(self.cache_manager)
+        self.tech_calculator = TechnicalCalculator()
+        self.report_manager = ReportManager()
+        self.sector_screener = SectorScreener(
+            self.sector_fetcher, 
+            self.tech_calculator, 
+            self.report_manager
+        )
+        self.sector_analyzer = SectorAnalyzer(
+            self.sector_fetcher,
+            self.tech_calculator,
+            self.report_manager
+        )
         
     async def run_analysis(self, stock_code: Optional[str] = None) -> dict:
         """运行完整的股票分析流程"""
@@ -44,6 +65,40 @@ class StockInfoSystem:
         except Exception as e:
             logging.error(f"分析失败: {e}")
             return {'status': 'error', 'message': str(e)}
+    
+    async def run_sector_screening(self, period: str = "1-2weeks", top_n: int = 5) -> dict:
+        """运行板块筛选流程"""
+        try:
+            result = await self.sector_screener.screen_top_sectors(top_n=top_n, period=period)
+            return result
+            
+        except Exception as e:
+            logging.error(f"板块筛选失败: {e}")
+            return {'status': 'error', 'message': str(e)}
+    
+    async def get_sector_list(self) -> List[str]:
+        """获取支持的板块列表"""
+        return self.sector_fetcher.get_supported_sectors()
+        
+    async def get_sector_summary(self, sector_name: str) -> dict:
+        """获取板块分析摘要"""
+        try:
+            summary = await self.sector_screener.get_sector_analysis_summary(sector_name)
+            return summary
+            
+        except Exception as e:
+            logging.error(f"获取板块摘要失败: {e}")
+            return {'status': 'error', 'message': str(e)}
+    
+    async def run_sector_analysis(self, sector_name: str, time_range: Optional[str] = None) -> dict:
+        """运行单板块详细分析"""
+        try:
+            result = await self.sector_analyzer.analyze_sector(sector_name, time_range)
+            return result
+            
+        except Exception as e:
+            logging.error(f"板块分析失败: {e}")
+            return {'status': 'error', 'message': str(e)}
 
 
 def setup_logging():
@@ -61,6 +116,15 @@ async def main():
     parser.add_argument('--verbose', '-v', action='store_true', help='详细输出')
     parser.add_argument('--list-reports', '-l', action='store_true', help='列出历史报告')
     parser.add_argument('--show-report', '-r', help='显示指定的报告文件')
+    
+    # 板块相关参数
+    parser.add_argument('--sector-screening', action='store_true', help='板块筛选功能')
+    parser.add_argument('--period', default='1-2weeks', help='预测周期 (default: 1-2weeks)')
+    parser.add_argument('--top-n', type=int, default=5, help='返回前N个板块 (default: 5)')
+    parser.add_argument('--list-sectors', action='store_true', help='列出支持的板块')
+    parser.add_argument('--sector-summary', help='获取指定板块分析摘要')
+    parser.add_argument('--sector-analysis', help='单板块详细分析')
+    parser.add_argument('--time-range', help='时间范围，格式: "from YYMMDD to YYMMDD"')
     
     args = parser.parse_args()
     
@@ -97,42 +161,186 @@ async def main():
             print(f"❌ 报告文件不存在: {report_path}")
         return
     
-    # 执行股票分析
+    # 初始化系统
     system = StockInfoSystem()
-    result = await system.run_analysis(args.stock)
     
-    if result['status'] == 'success':
-        print("=== 分析完成 ===")
-        print(f"数据记录数: {len(result['data'])}")
+    # 处理板块相关命令
+    if args.list_sectors:
+        sectors = await system.get_sector_list()
+        print("=== 支持的板块列表 ===")
+        for i, sector in enumerate(sectors, 1):
+            print(f"{i:2d}. {sector}")
+        print(f"\n共支持 {len(sectors)} 个板块")
+        return
         
-        # 显示报告保存路径
-        if 'report_path' in result['analysis']:
-            print(f"📝 分析报告已保存: {result['analysis']['report_path']}")
-            print(f"📊 报告格式: Markdown")
+    if args.sector_summary:
+        print(f"=== {args.sector_summary} 板块分析摘要 ===")
+        summary = await system.get_sector_summary(args.sector_summary)
         
-        # 显示简要分析结果
-        analysis = result['analysis']
-        if args.verbose:
-            print("\n=== 详细分析内容 ===")
-            print(f"\n📊 事件分析:\n{analysis.get('events_analysis', '无')}")
-            print(f"\n📈 技术分析:\n{analysis.get('trend_analysis', '无')}")
-            print(f"\n💡 交易建议:\n{analysis.get('trading_advice', '无')}")
+        if 'error' in summary:
+            print(f"❌ 获取失败: {summary['error']}")
+            return
+            
+        print(f"板块名称: {summary.get('sector_name', 'Unknown')}")
+        print(f"综合评分: {summary.get('comprehensive_score', 0):.1f}/100")
+        print(f"推荐等级: {summary.get('recommendation', 'Hold')}")
+        print(f"最新价格: {summary.get('latest_price', 0):.2f}")
+        print(f"5日涨跌幅: {summary.get('price_change_5d', 0):+.2f}%")
+        print(f"成分股数量: {summary.get('stocks_count', 0)}")
+        
+        scores = summary.get('scores_breakdown', {})
+        print(f"\n评分明细:")
+        print(f"  技术面: {scores.get('technical', 0):.1f}/100")
+        print(f"  资金流向: {scores.get('money_flow', 0):.1f}/100")
+        print(f"  基本面: {scores.get('fundamental', 0):.1f}/100")
+        print(f"  轮动周期: {scores.get('rotation', 0):.1f}/100")
+        return
+        
+    if args.sector_screening:
+        print(f"=== 开始板块筛选 (Top {args.top_n}, 周期: {args.period}) ===")
+        result = await system.run_sector_screening(period=args.period, top_n=args.top_n)
+        
+        if 'status' in result and result['status'] == 'error':
+            print(f"❌ 筛选失败: {result['message']}")
+            return
+            
+        print(f"筛选时间: {result.get('screening_time', '')}")
+        print(f"分析板块数: {result.get('total_sectors_analyzed', 0)}")
+        
+        top_sectors = result.get('top_sectors', [])
+        print(f"\n=== Top {len(top_sectors)} 推荐板块 ===")
+        
+        for i, sector in enumerate(top_sectors, 1):
+            name = sector.get('sector_name', 'Unknown')
+            score = sector.get('comprehensive_score', 0)
+            recommendation = sector.get('recommendation', 'Hold')
+            
+            print(f"{i}. {name}")
+            print(f"   综合评分: {score:.1f}/100 | 推荐: {recommendation}")
+            print(f"   技术面: {sector.get('technical_score', 0):.1f} | "
+                  f"资金面: {sector.get('money_flow_score', 0):.1f} | "
+                  f"基本面: {sector.get('fundamental_score', 0):.1f}")
+            
+        if result.get('report_path'):
+            print(f"\n📝 详细报告已保存: {result['report_path']}")
+            
+        # 显示风险提示
+        warnings = result.get('risk_warnings', [])
+        if warnings:
+            print(f"\n⚠️  风险提示:")
+            for warning in warnings:
+                print(f"   - {warning}")
+                
+        return
+    
+    if args.sector_analysis:
+        print(f"=== {args.sector_analysis} 板块详细分析 ===")
+        time_range_str = args.time_range if args.time_range else None
+        if time_range_str:
+            print(f"分析时间范围: {time_range_str}")
         else:
-            print("\n=== 分析摘要 ===")
-            events = analysis.get('events_analysis', '')
-            if events:
-                # 显示事件分析的前100字符
-                summary = events[:100] + "..." if len(events) > 100 else events
-                print(f"📊 事件分析: {summary}")
+            print("分析时间范围: 默认最近一周")
             
-            print(f"📈 分析时间: {analysis.get('analysis_time', 'Unknown')}")
+        result = await system.run_sector_analysis(args.sector_analysis, time_range_str)
+        
+        if 'status' in result and result['status'] == 'error':
+            print(f"❌ 分析失败: {result['message']}")
+            return
             
-            if analysis.get('note'):
-                print(f"ℹ️  说明: {analysis['note']}")
+        # 显示分析摘要
+        print(f"\n板块名称: {result.get('sector_name', 'Unknown')}")
+        print(f"综合评分: {result.get('comprehensive_score', 0):.1f}/100")
+        print(f"推荐等级: {result.get('recommendation', 'Hold')}")
+        print(f"分析周期: {result.get('time_range', {}).get('trading_days', 0)} 个交易日")
+        
+        # 价格分析
+        price_analysis = result.get('price_analysis', {})
+        print(f"\n=== 价格表现 ===")
+        print(f"最新价格: {price_analysis.get('latest_price', 0):.2f}")
+        print(f"今日涨跌: {price_analysis.get('price_change_1d', 0):+.2f}%")
+        print(f"5日涨跌: {price_analysis.get('price_change_5d', 0):+.2f}%")
+        print(f"区间涨跌: {price_analysis.get('price_change_period', 0):+.2f}%")
+        
+        # 个股分析
+        stocks_analysis = result.get('stocks_analysis', {})
+        print(f"\n=== 个股表现 ===")
+        print(f"板块股数: {stocks_analysis.get('total_stocks', 0)}")
+        print(f"平均涨跌幅: {stocks_analysis.get('average_return_5d', 0):+.2f}%")
+        print(f"上涨股票占比: {stocks_analysis.get('positive_stocks_ratio', 0):.1f}%")
+        
+        # 领涨股
+        leading_stocks = stocks_analysis.get('leading_stocks', [])[:3]
+        if leading_stocks:
+            print(f"领涨股TOP3:")
+            for i, stock in enumerate(leading_stocks, 1):
+                print(f"  {i}. {stock['name']}: {stock['price_change_5d']:+.2f}%")
+        
+        # 预测
+        prediction = result.get('prediction', {})
+        if prediction and 'trend_prediction' in prediction:
+            print(f"\n=== 预测分析 ===")
+            print(f"趋势预测: {prediction.get('trend_prediction', 'Unknown')}")
+            print(f"预测概率: {prediction.get('probability', 0):.1f}%")
+            price_range = prediction.get('price_range', {})
+            print(f"价格区间: {price_range.get('lower', 0):.2f} - {price_range.get('upper', 0):.2f}")
+        
+        # 投资建议
+        investment_advice = result.get('investment_advice', {})
+        if investment_advice and 'overall_action' in investment_advice:
+            print(f"\n=== 投资建议 ===")
+            print(f"操作建议: {investment_advice.get('overall_action', 'Unknown')}")
+            print(f"仓位建议: {investment_advice.get('position_ratio', 'Unknown')}")
+            print(f"入场时机: {investment_advice.get('best_entry_timing', 'Unknown')}")
+        
+        # 风险提示
+        warnings = result.get('risk_warnings', [])
+        if warnings:
+            print(f"\n⚠️  风险提示:")
+            for warning in warnings[:3]:  # 只显示前3个
+                print(f"   - {warning}")
+        
+        # 报告路径
+        if result.get('report_path'):
+            print(f"\n📝 详细报告已保存: {result['report_path']}")
             
-            print(f"\n💡 查看完整报告: cat {result['analysis'].get('report_path', '')}")
-    else:
-        print(f"❌ 分析失败: {result['message']}")
+        return
+    
+    # 执行股票分析
+    if args.stock or not any([args.sector_screening, args.list_sectors, args.sector_summary, args.sector_analysis]):
+        result = await system.run_analysis(args.stock)
+        
+        if result['status'] == 'success':
+            print("=== 分析完成 ===")
+            print(f"数据记录数: {len(result['data'])}")
+            
+            # 显示报告保存路径
+            if 'report_path' in result['analysis']:
+                print(f"📝 分析报告已保存: {result['analysis']['report_path']}")
+                print(f"📊 报告格式: Markdown")
+            
+            # 显示简要分析结果
+            analysis = result['analysis']
+            if args.verbose:
+                print("\n=== 详细分析内容 ===")
+                print(f"\n📊 事件分析:\n{analysis.get('events_analysis', '无')}")
+                print(f"\n📈 技术分析:\n{analysis.get('trend_analysis', '无')}")
+                print(f"\n💡 交易建议:\n{analysis.get('trading_advice', '无')}")
+            else:
+                print("\n=== 分析摘要 ===")
+                events = analysis.get('events_analysis', '')
+                if events:
+                    # 显示事件分析的前100字符
+                    summary = events[:100] + "..." if len(events) > 100 else events
+                    print(f"📊 事件分析: {summary}")
+                
+                print(f"📈 分析时间: {analysis.get('analysis_time', 'Unknown')}")
+                
+                if analysis.get('note'):
+                    print(f"ℹ️  说明: {analysis['note']}")
+                
+                print(f"\n💡 查看完整报告: cat {result['analysis'].get('report_path', '')}")
+        else:
+            print(f"❌ 分析失败: {result['message']}")
 
 
 if __name__ == "__main__":
