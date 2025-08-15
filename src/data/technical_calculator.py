@@ -6,7 +6,7 @@
 import logging
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 
 class TechnicalCalculator:
@@ -298,10 +298,30 @@ class TechnicalCalculator:
                 
             scores['momentum_score'] = momentum_score
             
-            # 轮动综合评分
+            # 轮动强度评分（基于相对强弱）
+            if len(df) >= 20:
+                # 计算相对强弱指标
+                recent_performance = (df['close'].iloc[-1] / df['close'].iloc[-20] - 1) * 100
+                if recent_performance > 5:
+                    rotation_strength = 80
+                elif recent_performance > 2:
+                    rotation_strength = 65
+                elif recent_performance > -2:
+                    rotation_strength = 50
+                elif recent_performance > -5:
+                    rotation_strength = 35
+                else:
+                    rotation_strength = 20
+            else:
+                rotation_strength = 50
+                
+            scores['rotation_strength_score'] = rotation_strength
+            
+            # 轮动周期综合评分
             rotation_score = (
-                position_score * 0.6 +
-                momentum_score * 0.4
+                position_score * 0.4 +
+                momentum_score * 0.3 +
+                rotation_strength * 0.3
             )
             scores['rotation_score'] = rotation_score
             
@@ -310,10 +330,116 @@ class TechnicalCalculator:
             scores = {
                 'cycle_position_score': 50,
                 'momentum_score': 50,
+                'rotation_strength_score': 50,
                 'rotation_score': 50
             }
             
         return scores
+    
+    def calculate_sector_correlation(self, sector_data: Dict[str, pd.DataFrame]) -> Dict[str, Dict[str, float]]:
+        """计算板块间相关性"""
+        try:
+            correlation_matrix = {}
+            
+            # 提取各板块的收盘价数据
+            sector_returns = {}
+            for sector_name, df in sector_data.items():
+                if not df.empty and 'close' in df.columns:
+                    # 计算日收益率
+                    returns = df['close'].pct_change().dropna()
+                    if len(returns) > 0:
+                        sector_returns[sector_name] = returns
+            
+            # 计算相关性矩阵
+            if len(sector_returns) > 1:
+                # 对齐数据长度
+                min_length = min(len(returns) for returns in sector_returns.values())
+                aligned_returns = {}
+                for sector_name, returns in sector_returns.items():
+                    if len(returns) >= min_length:
+                        aligned_returns[sector_name] = returns.iloc[-min_length:]
+                
+                if len(aligned_returns) > 1:
+                    # 创建DataFrame并计算相关性
+                    import pandas as pd
+                    returns_df = pd.DataFrame(aligned_returns)
+                    corr_matrix = returns_df.corr()
+                    
+                    # 转换为字典格式
+                    for sector1 in corr_matrix.index:
+                        correlation_matrix[sector1] = {}
+                        for sector2 in corr_matrix.columns:
+                            correlation_matrix[sector1][sector2] = float(corr_matrix.loc[sector1, sector2])
+            
+            return correlation_matrix
+            
+        except Exception as e:
+            self.logger.error(f"计算板块相关性失败: {e}")
+            return {}
+    
+    def analyze_sector_rotation_pattern(self, sector_data: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
+        """分析板块轮动模式"""
+        try:
+            rotation_analysis = {
+                'leading_sectors': [],
+                'lagging_sectors': [],
+                'rotation_opportunities': [],
+                'market_phase': 'unknown'
+            }
+            
+            # 计算各板块的相对强弱
+            sector_strength = {}
+            for sector_name, df in sector_data.items():
+                if not df.empty and 'close' in df.columns and len(df) >= 20:
+                    # 计算20日相对强弱
+                    strength = (df['close'].iloc[-1] / df['close'].iloc[-20] - 1) * 100
+                    sector_strength[sector_name] = strength
+            
+            if sector_strength:
+                # 排序找出领涨和领跌板块
+                sorted_sectors = sorted(sector_strength.items(), key=lambda x: x[1], reverse=True)
+                
+                # 领涨板块（前30%）
+                top_count = max(1, len(sorted_sectors) // 3)
+                rotation_analysis['leading_sectors'] = [
+                    {'sector': name, 'strength': strength} 
+                    for name, strength in sorted_sectors[:top_count]
+                ]
+                
+                # 领跌板块（后30%）
+                rotation_analysis['lagging_sectors'] = [
+                    {'sector': name, 'strength': strength} 
+                    for name, strength in sorted_sectors[-top_count:]
+                ]
+                
+                # 轮动机会（中等强度板块）
+                mid_start = top_count
+                mid_end = len(sorted_sectors) - top_count
+                if mid_end > mid_start:
+                    rotation_analysis['rotation_opportunities'] = [
+                        {'sector': name, 'strength': strength} 
+                        for name, strength in sorted_sectors[mid_start:mid_end]
+                    ]
+                
+                # 判断市场阶段
+                avg_strength = sum(sector_strength.values()) / len(sector_strength)
+                if avg_strength > 3:
+                    rotation_analysis['market_phase'] = 'bull_market'
+                elif avg_strength < -3:
+                    rotation_analysis['market_phase'] = 'bear_market'
+                else:
+                    rotation_analysis['market_phase'] = 'sideways_market'
+            
+            return rotation_analysis
+            
+        except Exception as e:
+            self.logger.error(f"分析板块轮动模式失败: {e}")
+            return {
+                'leading_sectors': [],
+                'lagging_sectors': [],
+                'rotation_opportunities': [],
+                'market_phase': 'unknown'
+            }
         
     def _get_default_scores(self) -> Dict[str, float]:
         """获取默认评分"""

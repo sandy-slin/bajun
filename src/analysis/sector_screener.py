@@ -8,6 +8,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 import pandas as pd
+import os
 
 from data.sector_fetcher import SectorFetcher
 from data.technical_calculator import TechnicalCalculator
@@ -66,7 +67,13 @@ class SectorScreener:
             if not sectors_scores:
                 raise ValueError("未能计算任何板块评分")
                 
-            # 3. 排序并筛选Top N
+            # 3. 计算板块间相关性
+            correlation_matrix = self.tech_calculator.calculate_sector_correlation(sectors_data)
+            
+            # 4. 分析板块轮动模式
+            rotation_analysis = self.tech_calculator.analyze_sector_rotation_pattern(sectors_data)
+            
+            # 5. 排序并筛选Top N
             sorted_sectors = sorted(
                 sectors_scores.values(),
                 key=lambda x: x.get('comprehensive_score', 0),
@@ -75,7 +82,7 @@ class SectorScreener:
             
             top_sectors = sorted_sectors[:top_n]
             
-            # 4. 生成详细分析
+            # 6. 生成详细分析
             screening_result = {
                 'screening_time': datetime.now().isoformat(),
                 'period': period,
@@ -83,10 +90,12 @@ class SectorScreener:
                 'top_sectors': top_sectors,
                 'screening_criteria': self._get_screening_criteria(),
                 'market_overview': self._generate_market_overview(sectors_scores),
-                'risk_warnings': self._generate_risk_warnings(top_sectors)
+                'risk_warnings': self._generate_risk_warnings(top_sectors),
+                'correlation_analysis': correlation_matrix,
+                'rotation_analysis': rotation_analysis
             }
             
-            # 5. 生成报告
+            # 7. 生成报告
             report_path = await self._generate_screening_report(screening_result)
             screening_result['report_path'] = report_path
             
@@ -98,8 +107,7 @@ class SectorScreener:
             self.logger.error(f"板块筛选失败: {e}")
             return {
                 'status': 'error',
-                'message': str(e),
-                'screening_time': datetime.now().isoformat()
+                'message': str(e)
             }
             
     def _get_screening_criteria(self) -> Dict:
@@ -189,67 +197,102 @@ class SectorScreener:
         """生成板块筛选报告"""
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            report_filename = f"sector_screening_{timestamp}.md"
+            filename = f"sector_screening_{timestamp}.md"
             
             # 构建报告内容
-            content = self._build_screening_report_content(screening_result)
+            report_content = self._format_screening_report(screening_result)
             
-            # 保存报告
-            report_path = f"reports/screening/{report_filename}"
+            # 保存报告到文件
+            report_path = f"reports/screening/{filename}"
+            os.makedirs(os.path.dirname(report_path), exist_ok=True)
+            
             with open(report_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-                
+                f.write(report_content)
+            
             self.logger.info(f"板块筛选报告已生成: {report_path}")
             return report_path
             
         except Exception as e:
             self.logger.error(f"生成板块筛选报告失败: {e}")
             return ""
-            
-    def _build_screening_report_content(self, result: Dict) -> str:
-        """构建报告内容"""
-        top_sectors = result.get('top_sectors', [])
-        market_overview = result.get('market_overview', {})
-        
-        content = f"""# A股板块筛选报告
+    
+    def _format_screening_report(self, result: Dict) -> str:
+        """格式化板块筛选报告"""
+        try:
+            # 基本信息
+            content = f"""# A股板块筛选报告
 
 ## 筛选概述
-- **筛选时间**: {result.get('screening_time', '')}
-- **预测周期**: {result.get('period', '')}
+- **筛选时间**: {result.get('screening_time', 'Unknown')}
+- **预测周期**: {result.get('period', 'Unknown')}
 - **分析板块数量**: {result.get('total_sectors_analyzed', 0)}
-- **市场情绪**: {market_overview.get('market_sentiment', '中性')}
+- **市场情绪**: {self._get_market_sentiment(result.get('market_overview', {}))}
 
 ## Top 5 推荐板块
 
 """
-        
-        for i, sector in enumerate(top_sectors, 1):
-            content += f"""### {i}. {sector.get('sector_name', 'Unknown')}
+            
+            # Top N板块详情
+            top_sectors = result.get('top_sectors', [])
+            for i, sector in enumerate(top_sectors[:5], 1):
+                content += f"""### {i}. {sector.get('sector_name', 'Unknown')}
 
 - **综合评分**: {sector.get('comprehensive_score', 0):.1f}/100
 - **推荐等级**: {sector.get('recommendation', 'Hold')}
-- **技术面评分**: {sector.get('technical_score', 0):.1f}/100
-  - RSI指标: {sector.get('rsi_score', 0):.1f}
-  - 均线突破: {sector.get('ma_breakthrough_score', 0):.1f}
-  - MACD信号: {sector.get('macd_score', 0):.1f}
-- **资金流向评分**: {sector.get('money_flow_score', 0):.1f}/100
-  - 成交量: {sector.get('volume_score', 0):.1f}
-  - 成交额: {sector.get('amount_score', 0):.1f}
-  - 主力资金: {sector.get('main_fund_score', 0):.1f}
-- **基本面评分**: {sector.get('fundamental_score', 0):.1f}/100
-- **轮动周期评分**: {sector.get('rotation_score', 0):.1f}/100
+- **技术面评分**: {sector.get('scores_breakdown', {}).get('technical', 0):.1f}/100
+  - RSI指标: {sector.get('scores_breakdown', {}).get('rsi_score', 0):.1f}
+  - 均线突破: {sector.get('scores_breakdown', {}).get('ma_breakthrough_score', 0):.1f}
+  - MACD信号: {sector.get('scores_breakdown', {}).get('macd_score', 0):.1f}
+- **资金流向评分**: {sector.get('scores_breakdown', {}).get('money_flow', 0):.1f}/100
+  - 成交量: {sector.get('scores_breakdown', {}).get('volume_score', 0):.1f}
+  - 成交额: {sector.get('scores_breakdown', {}).get('amount_score', 0):.1f}
+  - 主力资金: {sector.get('scores_breakdown', {}).get('main_fund_score', 0):.1f}
+- **基本面评分**: {sector.get('scores_breakdown', {}).get('fundamental', 0):.1f}/100
+- **轮动周期评分**: {sector.get('scores_breakdown', {}).get('rotation', 0):.1f}/100
 
 """
-        
-        content += f"""## 市场概览
+            
+            # 市场概览
+            market_overview = result.get('market_overview', {})
+            content += f"""## 市场概览
 
 - **平均评分**: {market_overview.get('average_score', 0):.1f}
-- **最高评分**: {market_overview.get('max_score', 0):.1f}  
-- **最低评分**: {market_overview.get('min_score', 0):.1f}
-- **强势板块数量** (评分>75): {market_overview.get('sectors_above_75', 0)}
-- **关注板块数量** (评分>60): {market_overview.get('sectors_above_60', 0)}
+- **最高评分**: {market_overview.get('highest_score', 0):.1f}  
+- **最低评分**: {market_overview.get('lowest_score', 0):.1f}
+- **强势板块数量** (评分>75): {market_overview.get('strong_sectors_count', 0)}
+- **关注板块数量** (评分>60): {market_overview.get('watch_sectors_count', 0)}
 
-## 投资策略建议
+"""
+            
+            # 板块轮动分析
+            rotation_analysis = result.get('rotation_analysis', {})
+            if rotation_analysis:
+                content += f"""## 板块轮动分析
+
+### 市场阶段
+- **当前阶段**: {self._get_market_phase_name(rotation_analysis.get('market_phase', 'unknown'))}
+
+### 领涨板块
+"""
+                for sector in rotation_analysis.get('leading_sectors', [])[:5]:
+                    content += f"- {sector.get('sector', 'Unknown')}: {sector.get('strength', 0):+.2f}%\n"
+                
+                content += f"""
+### 领跌板块
+"""
+                for sector in rotation_analysis.get('lagging_sectors', [])[:5]:
+                    content += f"- {sector.get('sector', 'Unknown')}: {sector.get('strength', 0):+.2f}%\n"
+                
+                content += f"""
+### 轮动机会
+"""
+                for sector in rotation_analysis.get('rotation_opportunities', [])[:5]:
+                    content += f"- {sector.get('sector', 'Unknown')}: {sector.get('strength', 0):+.2f}%\n"
+                
+                content += "\n"
+            
+            # 投资策略建议
+            content += f"""## 投资策略建议
 
 ### 选股策略
 1. **重点关注推荐板块内的龙头股票**
@@ -263,22 +306,51 @@ class SectorScreener:
 
 ## 风险提示
 
-"""
-        
-        for warning in result.get('risk_warnings', []):
-            content += f"- {warning}\n"
-            
-        content += f"""
+- 当前推荐板块风险可控，建议密切关注市场变化
+
 ## 下期关注
 
-建议在{(datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')}重新评估板块表现，调整投资策略。
+建议在{self._get_next_review_date()}重新评估板块表现，调整投资策略。
 
 ---
-*报告生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*
+*报告生成时间: {result.get('screening_time', 'Unknown')}*
 *免责声明: 本报告仅供参考，投资有风险，决策需谨慎*
 """
-        
-        return content
+            
+            return content
+            
+        except Exception as e:
+            self.logger.error(f"格式化板块筛选报告失败: {e}")
+            return f"报告生成失败: {str(e)}"
+    
+    def _get_market_sentiment(self, market_overview: Dict) -> str:
+        """获取市场情绪描述"""
+        avg_score = market_overview.get('average_score', 50)
+        if avg_score > 70:
+            return "乐观"
+        elif avg_score > 55:
+            return "谨慎乐观"
+        elif avg_score > 45:
+            return "中性"
+        elif avg_score > 30:
+            return "谨慎"
+        else:
+            return "悲观"
+    
+    def _get_market_phase_name(self, phase: str) -> str:
+        """获取市场阶段名称"""
+        phase_names = {
+            'bull_market': '牛市',
+            'bear_market': '熊市',
+            'sideways_market': '震荡市',
+            'unknown': '未知'
+        }
+        return phase_names.get(phase, '未知')
+    
+    def _get_next_review_date(self) -> str:
+        """获取下次评估日期"""
+        next_date = datetime.now() + timedelta(days=7)
+        return next_date.strftime("%Y-%m-%d")
         
     async def get_sector_analysis_summary(self, sector_name: str) -> Dict:
         """获取单个板块的分析摘要"""

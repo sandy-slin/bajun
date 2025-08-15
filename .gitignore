@@ -171,3 +171,12 @@ tmp/
 *.pickle
 models/
 checkpoints/
+
+# Project specific - Cache and Reports
+cache/
+reports/
+*.cache
+*.md
+
+# Keep only specific report templates if needed
+!reports/README.md

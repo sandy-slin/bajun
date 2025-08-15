@@ -1,7 +1,7 @@
-aiohttp==3.9.0
+aiohttp>=3.11.13
 pandas==2.1.4
 pytest==7.4.3
 pytest-asyncio==0.23.2
 pytest-cov==4.1.0
-akshare==1.12.98
+akshare>=1.16.72
 requests==2.31.0
