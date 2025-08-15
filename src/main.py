@@ -17,6 +17,7 @@ from cache.manager import CacheManager
 from analysis.llm_analyzer import LLMAnalyzer
 from analysis.sector_screener import SectorScreener
 from analysis.sector_analyzer import SectorAnalyzer
+from analysis.sector_backtester import SectorBacktester
 from analysis.report_manager import ReportManager
 from config.settings import Settings
 
@@ -43,6 +44,12 @@ class StockInfoSystem:
             self.sector_fetcher,
             self.tech_calculator,
             self.report_manager
+        )
+        
+        # 添加板块回测器
+        self.sector_backtester = SectorBacktester(
+            self.sector_fetcher,
+            self.cache_manager
         )
         
     async def run_analysis(self, stock_code: Optional[str] = None) -> dict:
@@ -99,6 +106,25 @@ class StockInfoSystem:
         except Exception as e:
             logging.error(f"板块分析失败: {e}")
             return {'status': 'error', 'message': str(e)}
+    
+    async def run_sector_backtest(self, start_date: str, end_date: str, 
+                                rebalance_frequency: str = "weekly", 
+                                top_n: int = 5, 
+                                initial_capital: float = 1000000.0) -> dict:
+        """运行板块回测"""
+        try:
+            result = await self.sector_backtester.run_backtest(
+                start_date=start_date,
+                end_date=end_date,
+                rebalance_frequency=rebalance_frequency,
+                top_n=top_n,
+                initial_capital=initial_capital
+            )
+            return result
+            
+        except Exception as e:
+            logging.error(f"板块回测失败: {e}")
+            return {'status': 'error', 'message': str(e)}
 
 
 def setup_logging():
@@ -125,6 +151,16 @@ async def main():
     parser.add_argument('--sector-summary', help='获取指定板块分析摘要')
     parser.add_argument('--sector-analysis', help='单板块详细分析')
     parser.add_argument('--time-range', help='时间范围，格式: "from YYMMDD to YYMMDD"')
+    
+    # 回测相关参数
+    parser.add_argument('--sector-backtest', action='store_true', help='板块回测功能')
+    parser.add_argument('--start-date', help='回测开始日期 (YYYYMMDD)')
+    parser.add_argument('--end-date', help='回测结束日期 (YYYYMMDD)')
+    parser.add_argument('--rebalance-freq', default='weekly', 
+                       choices=['daily', 'weekly', 'monthly'], 
+                       help='再平衡频率 (default: weekly)')
+    parser.add_argument('--initial-capital', type=float, default=1000000.0, 
+                       help='初始资金 (default: 1000000.0)')
     
     args = parser.parse_args()
     
@@ -302,6 +338,64 @@ async def main():
         # 报告路径
         if result.get('report_path'):
             print(f"\n📝 详细报告已保存: {result['report_path']}")
+            
+        return
+    
+    # 处理板块回测命令
+    if args.sector_backtest:
+        if not args.start_date or not args.end_date:
+            print("❌ 回测功能需要指定开始日期和结束日期")
+            print("   使用 --start-date YYYYMMDD --end-date YYYYMMDD")
+            return
+            
+        print(f"=== 开始板块回测 ===")
+        print(f"回测期间: {args.start_date} - {args.end_date}")
+        print(f"再平衡频率: {args.rebalance_freq}")
+        print(f"Top N板块: {args.top_n}")
+        print(f"初始资金: {args.initial_capital:,.0f} 元")
+        
+        result = await system.run_sector_backtest(
+            start_date=args.start_date,
+            end_date=args.end_date,
+            rebalance_frequency=args.rebalance_freq,
+            top_n=args.top_n,
+            initial_capital=args.initial_capital
+        )
+        
+        if 'error' in result:
+            print(f"❌ 回测失败: {result['error']}")
+            return
+            
+        # 显示回测摘要
+        summary = result.get('backtest_summary', {})
+        print(f"\n=== 回测结果摘要 ===")
+        print(f"初始资金: {summary.get('initial_capital', 0):,.0f} 元")
+        print(f"最终资金: {summary.get('final_capital', 0):,.0f} 元")
+        print(f"总收益率: {summary.get('total_return', 0):+.2f}%")
+        print(f"年化收益率: {summary.get('annualized_return', 0):+.2f}%")
+        print(f"最大回撤: {summary.get('max_drawdown', 0):.2f}%")
+        print(f"夏普比率: {summary.get('sharpe_ratio', 0):.3f}")
+        
+        # 显示详细结果
+        detailed = result.get('detailed_results', {})
+        metrics = detailed.get('performance_metrics', {})
+        if metrics:
+            print(f"\n=== 详细指标 ===")
+            print(f"年化波动率: {metrics.get('volatility', 0):.2f}%")
+            print(f"胜率: {metrics.get('win_rate', 0):.1f}%")
+            print(f"总交易天数: {metrics.get('total_trading_days', 0)} 天")
+        
+        # 显示交易记录
+        transactions = detailed.get('transactions', [])
+        if transactions:
+            print(f"\n=== 交易记录 (最近10笔) ===")
+            for i, tx in enumerate(transactions[-10:], 1):
+                print(f"{i:2d}. {tx['date']} | {tx['sector']} | {tx['action']} | "
+                      f"{tx['change']:+,.0f}")
+        
+        # 显示报告路径
+        if result.get('report_path'):
+            print(f"\n📝 详细回测报告已保存: {result['report_path']}")
             
         return
     
