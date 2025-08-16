@@ -100,6 +100,31 @@ The project uses pytest for testing. No specific linting configuration found - c
 - **Functional Tests**: End-to-end workflow testing
 - **Test Fixtures**: Sample data in `tests/fixtures/sample_data.py`
 
+## Performance Testing Standards
+
+### Standard Performance Test Command
+```bash
+python src/main.py --optimized-analysis --opt-analysis-months 2 --opt-prediction-days 5
+```
+
+### Performance Testing Rules
+1. **版本对比统一标准**: 所有版本性能对比必须使用相同的测试命令和参数
+2. **Stage4基准测试**: Stage4 (commit 3f34af4) Enhanced Momentum准确率基准为 66.5%
+3. **性能回退检查**: 如果新版本Enhanced Momentum准确率低于前一版本，不得提交
+4. **提交前验证**: 每次提交前必须运行标准测试命令验证性能
+5. **测试数据一致性**: 使用相同的历史数据窗口（2个月）和预测窗口（5天）
+6. **关键指标跟踪**: 重点关注Enhanced Momentum准确率，作为主要性能指标
+
+### Version Control Rules
+- 性能提升版本：Enhanced Momentum > 66.5% → 可以提交
+- 性能保持版本：Enhanced Momentum = 66.5% → 可以提交  
+- 性能回退版本：Enhanced Momentum < 66.5% → 禁止提交，需要优化后重测
+
+### Testing History Reference
+- **Stage4 Baseline**: Enhanced Momentum accuracy 66.5% using standard test command
+- **Current Target**: Achieve or exceed 66.5% Enhanced Momentum accuracy
+- **Test Environment**: 2-month analysis window, 5-day prediction horizon
+
 ## Special Considerations
 
 - The system includes specialized prompts for "八骏" (Bajun) stock analysis in `articles/prompts/bajun.md`
