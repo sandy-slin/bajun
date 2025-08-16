@@ -11,6 +11,10 @@ from typing import Dict, List, Optional, Tuple, Any
 import pandas as pd
 import numpy as np
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import multiprocessing
+from functools import lru_cache
+import time
 
 from data.sector_fetcher import SectorFetcher
 from data.enhanced_data_fetcher import EnhancedDataFetcher
@@ -193,16 +197,33 @@ class OptimizedDataAnalyzer:
                 if df.empty or len(df) < 60:
                     continue
                 
-                # 阶段四：应用A股市场特征增强
-                ashare_enhanced_df = self.ashare_enhancer.enhance_with_ashare_features(df, sector_name)
-                # 使用高级特征工程（在A股增强基础上）
-                enhanced_df = self.advanced_feature_engineer.create_high_accuracy_features(ashare_enhanced_df)
-                if enhanced_df.empty or len(enhanced_df) < 40:
+                # 阶段二优化：增强数据预处理管道
+                cleaned_df = self._apply_enhanced_data_preprocessing(df)
+                
+                # 阶段二优化：数据质量评分
+                data_quality_score = self._calculate_data_quality_score(cleaned_df)
+                if data_quality_score < 0.7:  # 过滤低质量数据
+                    self.logger.warning(f"板块 {sector_name} 数据质量过低 ({data_quality_score:.2f})，跳过分析")
                     continue
                 
-                # 智能特征选择
+                # 阶段四：应用A股市场特征增强
+                ashare_enhanced_df = self.ashare_enhancer.enhance_with_ashare_features(cleaned_df, sector_name)
+                # 使用高级特征工程（在A股增强基础上）
+                enhanced_df = self.advanced_feature_engineer.create_high_accuracy_features(ashare_enhanced_df)
+                
+                # 阶段二优化：更严格的数据质量检查
+                if enhanced_df.empty or len(enhanced_df) < 60:  # 提高最小样本要求
+                    continue
+                
+                # 阶段二优化：增强特征工程
+                enhanced_df = self._apply_enhanced_feature_engineering(enhanced_df)
+                
+                # 阶段三优化：智能特征交互挖掘
+                interaction_enhanced_df = self._apply_intelligent_feature_interaction(enhanced_df)
+                
+                # 智能特征选择 - 阶段三优化：扩展到100个特征，更深度挖掘
                 selected_features = self.feature_selector.select_optimal_features(
-                    enhanced_df, prediction_days=prediction_days, max_features=30
+                    interaction_enhanced_df, prediction_days=prediction_days, max_features=100
                 )
                 
                 if not selected_features:
@@ -210,19 +231,19 @@ class OptimizedDataAnalyzer:
                 
                 total_sectors_analyzed += 1
                 
-                # 使用阶段二增强版信号过滤器分析
+                # 使用阶段二增强版信号过滤器分析（使用交互增强后的数据）
                 signal_results = self.signal_filter.filter_high_quality_signals_enhanced(
-                    enhanced_df, selected_features, prediction_days
+                    interaction_enhanced_df, selected_features, prediction_days
                 )
                 
                 # 阶段三：使用增强集成预测引擎（XGBoost + CatBoost + 注意力机制）
                 ensemble_results = self._apply_stage3_ensemble_prediction(
-                    enhanced_df, selected_features, prediction_days
+                    interaction_enhanced_df, selected_features, prediction_days
                 )
                 
                 # 阶段三：使用增强时序验证（季节性感知交叉验证）
                 ts_validation = self._apply_stage3_time_series_validation(
-                    enhanced_df, selected_features, prediction_days
+                    interaction_enhanced_df, selected_features, prediction_days
                 )
                 
                 # 基于时序验证的增强分析
@@ -233,9 +254,9 @@ class OptimizedDataAnalyzer:
                 best_accuracy = max(ensemble_accuracy, ts_accuracy)
                 
                 if best_accuracy > 50:
-                    # 传统方法作为基准
+                    # 传统方法作为基准（使用交互增强后的数据）
                     traditional_acc = self._analyze_enhanced_momentum_with_signals(
-                        enhanced_df, selected_features, signal_results, prediction_days
+                        interaction_enhanced_df, selected_features, signal_results, prediction_days
                     )
                     
                     # 综合准确率（多方法平均）
@@ -261,66 +282,66 @@ class OptimizedDataAnalyzer:
                         'validation_consistency': ts_validation.get('consistency', 'unknown'),
                         'stage': 4,  # 阶段四标识
                         'ashare_features_enabled': True,
-                        'ashare_insights': self.ashare_enhancer.get_ashare_market_insights(enhanced_df)
+                        'ashare_insights': self.ashare_enhancer.get_ashare_market_insights(interaction_enhanced_df)
                     })
                 else:
-                    # 退回到传统方法
+                    # 退回到传统方法（使用交互增强后的数据）
                     momentum_acc = self._analyze_enhanced_momentum_with_signals(
-                        enhanced_df, selected_features, signal_results, prediction_days
+                        interaction_enhanced_df, selected_features, signal_results, prediction_days
                     )
                     if momentum_acc > 50:
                         pattern_results['enhanced_momentum']['patterns'].append({
                             'sector': sector_name,
                             'accuracy': momentum_acc,
                             'ensemble_accuracy': 0,
-                            'sample_size': len(enhanced_df),
+                            'sample_size': len(interaction_enhanced_df),
                             'confidence': signal_results.get('confidence', 0.5),
                             'signal_quality': signal_results.get('quality_metrics', {}),
                             'selected_features_count': len(selected_features),
                             'ensemble_models': 0,
                             'stage': 4,  # 阶段四标识
                             'ashare_features_enabled': True,
-                            'ashare_insights': self.ashare_enhancer.get_ashare_market_insights(enhanced_df)
+                            'ashare_insights': self.ashare_enhancer.get_ashare_market_insights(interaction_enhanced_df)
                         })
                 
-                # 高级成交量模式分析
-                volume_acc = self._analyze_advanced_volume(enhanced_df, prediction_days)
+                # 高级成交量模式分析（使用交互增强后的数据）
+                volume_acc = self._analyze_advanced_volume(interaction_enhanced_df, prediction_days)
                 if volume_acc > 50:
                     pattern_results['advanced_volume']['patterns'].append({
                         'sector': sector_name,
                         'accuracy': volume_acc,
-                        'sample_size': len(enhanced_df),
-                        'confidence': self._calculate_confidence_score(enhanced_df, volume_acc)
+                        'sample_size': len(interaction_enhanced_df),
+                        'confidence': self._calculate_confidence_score(interaction_enhanced_df, volume_acc)
                     })
                 
-                # 智能趋势模式分析
-                trend_acc = self._analyze_smart_trend(enhanced_df, prediction_days)
+                # 智能趋势模式分析（使用交互增强后的数据）
+                trend_acc = self._analyze_smart_trend(interaction_enhanced_df, prediction_days)
                 if trend_acc > 50:
                     pattern_results['smart_trend']['patterns'].append({
                         'sector': sector_name,
                         'accuracy': trend_acc,
-                        'sample_size': len(enhanced_df),
-                        'confidence': self._calculate_confidence_score(enhanced_df, trend_acc)
+                        'sample_size': len(interaction_enhanced_df),
+                        'confidence': self._calculate_confidence_score(interaction_enhanced_df, trend_acc)
                     })
                 
-                # 技术指标组合分析
-                tech_acc = self._analyze_technical_combination(enhanced_df, prediction_days)
+                # 技术指标组合分析（使用交互增强后的数据）
+                tech_acc = self._analyze_technical_combination(interaction_enhanced_df, prediction_days)
                 if tech_acc > 50:
                     pattern_results['technical_combination']['patterns'].append({
                         'sector': sector_name,
                         'accuracy': tech_acc,
-                        'sample_size': len(enhanced_df),
-                        'confidence': self._calculate_confidence_score(enhanced_df, tech_acc)
+                        'sample_size': len(interaction_enhanced_df),
+                        'confidence': self._calculate_confidence_score(interaction_enhanced_df, tech_acc)
                     })
                 
-                # 市场结构分析
-                structure_acc = self._analyze_market_structure(enhanced_df, prediction_days)
+                # 市场结构分析（使用交互增强后的数据）
+                structure_acc = self._analyze_market_structure(interaction_enhanced_df, prediction_days)
                 if structure_acc > 50:
                     pattern_results['market_structure']['patterns'].append({
                         'sector': sector_name,
                         'accuracy': structure_acc,
-                        'sample_size': len(enhanced_df),
-                        'confidence': self._calculate_confidence_score(enhanced_df, structure_acc)
+                        'sample_size': len(interaction_enhanced_df),
+                        'confidence': self._calculate_confidence_score(interaction_enhanced_df, structure_acc)
                     })
             
             # 计算加权平均准确率
@@ -884,6 +905,44 @@ class OptimizedDataAnalyzer:
             self.logger.error(f"计算置信度失败: {e}")
             return 1.0
     
+    @lru_cache(maxsize=128)
+    def _process_sector_parallel(self, sector_name: str, df_data: tuple, prediction_days: int) -> Dict:
+        """阶段三：并行处理单个板块的验证"""
+        try:
+            # 将tuple转换回DataFrame
+            df = pd.DataFrame(df_data[0], columns=df_data[1], index=df_data[2])
+            
+            if df.empty or len(df) < 60:
+                return None
+            
+            # 阶段四：应用A股市场特征增强
+            ashare_enhanced_df = self.ashare_enhancer.enhance_with_ashare_features(df, sector_name)
+            # 使用高级特征工程（在A股增强基础上）
+            enhanced_df = self.advanced_feature_engineer.create_high_accuracy_features(ashare_enhanced_df)
+            if enhanced_df.empty or len(enhanced_df) < 40:
+                return None
+            
+            # 高精度方向预测验证
+            direction_accuracy = self._validate_direction_prediction(enhanced_df, prediction_days)
+            
+            # 强信号准确率
+            strong_signal_accuracy = self._validate_strong_signals(enhanced_df, prediction_days)
+            
+            if direction_accuracy > 0:
+                return {
+                    'sector_name': sector_name,
+                    'direction_accuracy': direction_accuracy,
+                    'strong_signal_accuracy': strong_signal_accuracy,
+                    'sample_size': len(enhanced_df),
+                    'data_quality': self._assess_data_quality(enhanced_df)
+                }
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"并行处理板块 {sector_name} 失败: {e}")
+            return None
+    
     async def _validate_returns_with_high_precision(self, sector_data: Dict[str, pd.DataFrame], 
                                                   prediction_days: int) -> Dict:
         """高精度收益验证"""
@@ -897,34 +956,47 @@ class OptimizedDataAnalyzer:
             total_strong_signals = []
             validated_sectors = 0
             
+            # 阶段三：使用并行处理提升速度
+            start_time = time.time()
+            max_workers = min(len(sector_data), multiprocessing.cpu_count())
+            self.logger.info(f"启动并行处理：{len(sector_data)}个板块，{max_workers}个线程")
+            
+            # 准备并行处理的数据
+            sector_tasks = []
             for sector_name, df in sector_data.items():
-                if df.empty or len(df) < 60:
-                    continue
+                if not df.empty and len(df) >= 60:
+                    # 将DataFrame转换为可序列化的格式
+                    df_tuple = (df.values.tolist(), df.columns.tolist(), df.index.tolist())
+                    sector_tasks.append((sector_name, df_tuple, prediction_days))
+            
+            # 并行执行板块处理
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = {
+                    executor.submit(self._process_sector_parallel, sector_name, df_data, prediction_days): sector_name
+                    for sector_name, df_data, prediction_days in sector_tasks
+                }
                 
-                # 阶段四：应用A股市场特征增强
-                ashare_enhanced_df = self.ashare_enhancer.enhance_with_ashare_features(df, sector_name)
-                # 使用高级特征工程（在A股增强基础上）
-                enhanced_df = self.advanced_feature_engineer.create_high_accuracy_features(ashare_enhanced_df)
-                if enhanced_df.empty or len(enhanced_df) < 40:
-                    continue
-                
-                # 高精度方向预测验证
-                direction_accuracy = self._validate_direction_prediction(enhanced_df, prediction_days)
-                
-                # 强信号准确率
-                strong_signal_accuracy = self._validate_strong_signals(enhanced_df, prediction_days)
-                
-                if direction_accuracy > 0:
-                    validation_results['sector_validations'][sector_name] = {
-                        'direction_accuracy': direction_accuracy,
-                        'strong_signal_accuracy': strong_signal_accuracy,
-                        'sample_size': len(enhanced_df),
-                        'data_quality': self._assess_data_quality(enhanced_df)
-                    }
-                    
-                    total_accuracy.append(direction_accuracy)
-                    total_strong_signals.append(strong_signal_accuracy)
-                    validated_sectors += 1
+                # 收集结果
+                for future in as_completed(futures):
+                    sector_name = futures[future]
+                    try:
+                        result = future.result()
+                        if result:
+                            validation_results['sector_validations'][result['sector_name']] = {
+                                'direction_accuracy': result['direction_accuracy'],
+                                'strong_signal_accuracy': result['strong_signal_accuracy'],
+                                'sample_size': result['sample_size'],
+                                'data_quality': result['data_quality']
+                            }
+                            
+                            total_accuracy.append(result['direction_accuracy'])
+                            total_strong_signals.append(result['strong_signal_accuracy'])
+                            validated_sectors += 1
+                    except Exception as e:
+                        self.logger.error(f"处理板块 {sector_name} 结果时出错: {e}")
+            
+            processing_time = time.time() - start_time
+            self.logger.info(f"并行处理完成，耗时: {processing_time:.2f}秒，成功处理: {validated_sectors}个板块")
             
             # 计算整体验证指标
             if total_accuracy:
@@ -1451,9 +1523,12 @@ class OptimizedDataAnalyzer:
                 )
                 
                 if training_result.get('status') == 'success':
-                    # 在测试集上进行预测
-                    prediction_result = self.ensemble_engine.predict_with_ensemble_confidence(
-                        test_data, selected_features, confidence_threshold=0.6
+                    # 阶段三终极优化：动态调整置信度阈值
+                    dynamic_threshold = self._calculate_dynamic_confidence_threshold(enhanced_df, data_quality_score)
+                    
+                    # 阶段三：使用高级Stacking集成预测
+                    prediction_result = self.ensemble_engine.predict_with_advanced_stacking(
+                        test_data, selected_features, confidence_threshold=dynamic_threshold
                     )
                     
                     if prediction_result.get('status') == 'success':
@@ -1626,4 +1701,457 @@ class OptimizedDataAnalyzer:
                 
         except Exception as e:
             self.logger.error(f"一致性等级判定失败: {e}")
+            return "unknown"
+    
+    def _apply_enhanced_data_preprocessing(self, df: pd.DataFrame) -> pd.DataFrame:
+        """阶段二优化：增强数据预处理管道"""
+        try:
+            if df.empty:
+                return df
+            
+            processed_df = df.copy()
+            
+            # 1. 异常值处理增强
+            numeric_columns = processed_df.select_dtypes(include=[np.number]).columns
+            for col in numeric_columns:
+                if col in processed_df.columns:
+                    # 使用IQR方法检测异常值
+                    Q1 = processed_df[col].quantile(0.25)
+                    Q3 = processed_df[col].quantile(0.75)
+                    IQR = Q3 - Q1
+                    lower_bound = Q1 - 2.0 * IQR  # 更严格的异常值检测
+                    upper_bound = Q3 + 2.0 * IQR
+                    
+                    # 将异常值替换为中位数
+                    outliers = (processed_df[col] < lower_bound) | (processed_df[col] > upper_bound)
+                    if outliers.any():
+                        median_value = processed_df[col].median()
+                        processed_df.loc[outliers, col] = median_value
+            
+            # 2. 缺失值处理增强
+            for col in numeric_columns:
+                if processed_df[col].isnull().any():
+                    # 使用前向填充+后向填充+中位数的组合策略
+                    processed_df[col] = processed_df[col].fillna(method='ffill').fillna(method='bfill').fillna(processed_df[col].median())
+            
+            # 3. 数据平滑处理（去噪）
+            for col in ['close', 'open', 'high', 'low']:
+                if col in processed_df.columns:
+                    # 使用指数加权移动平均进行数据平滑
+                    processed_df[f'{col}_smoothed'] = processed_df[col].ewm(span=3, adjust=False).mean()
+            
+            # 4. 数据标准化增强
+            from sklearn.preprocessing import RobustScaler
+            scaler_columns = ['volume', 'amount'] if 'volume' in processed_df.columns and 'amount' in processed_df.columns else []
+            if scaler_columns:
+                scaler = RobustScaler()
+                processed_df[scaler_columns] = scaler.fit_transform(processed_df[scaler_columns])
+            
+            # 5. 数据一致性检查
+            if 'close' in processed_df.columns and 'open' in processed_df.columns:
+                # 检查价格一致性
+                price_consistency = (processed_df['close'] > 0) & (processed_df['open'] > 0)
+                processed_df = processed_df[price_consistency]
+            
+            return processed_df
+            
+        except Exception as e:
+            self.logger.error(f"数据预处理失败: {e}")
+            return df
+    
+    def _calculate_data_quality_score(self, df: pd.DataFrame) -> float:
+        """阶段二优化：计算数据质量评分"""
+        try:
+            if df.empty:
+                return 0.0
+            
+            quality_scores = []
+            
+            # 1. 数据完整性评分
+            completeness_score = 1.0 - (df.isnull().sum().sum() / (len(df) * len(df.columns)))
+            quality_scores.append(completeness_score * 0.3)
+            
+            # 2. 数据一致性评分
+            consistency_score = 1.0
+            if 'close' in df.columns and 'open' in df.columns:
+                # 检查价格合理性
+                valid_prices = (df['close'] > 0) & (df['open'] > 0)
+                if len(df) > 0:
+                    consistency_score = valid_prices.sum() / len(df)
+            quality_scores.append(consistency_score * 0.25)
+            
+            # 3. 数据变异性评分（反向指标）
+            variability_score = 1.0
+            numeric_columns = df.select_dtypes(include=[np.number]).columns
+            if len(numeric_columns) > 0:
+                outlier_ratios = []
+                for col in numeric_columns:
+                    if len(df[col].dropna()) > 10:
+                        Q1 = df[col].quantile(0.25)
+                        Q3 = df[col].quantile(0.75)
+                        IQR = Q3 - Q1
+                        if IQR > 0:
+                            lower_bound = Q1 - 1.5 * IQR
+                            upper_bound = Q3 + 1.5 * IQR
+                            outliers = ((df[col] < lower_bound) | (df[col] > upper_bound)).sum()
+                            outlier_ratio = outliers / len(df[col].dropna())
+                            outlier_ratios.append(outlier_ratio)
+                
+                if outlier_ratios:
+                    avg_outlier_ratio = np.mean(outlier_ratios)
+                    variability_score = max(0, 1.0 - avg_outlier_ratio * 2)  # 异常值比例越低质量越高
+            quality_scores.append(variability_score * 0.2)
+            
+            # 4. 数据量充足性评分
+            volume_score = min(1.0, len(df) / 100.0)  # 100个样本以上为满分
+            quality_scores.append(volume_score * 0.15)
+            
+            # 5. 时间序列连续性评分
+            continuity_score = 1.0
+            if 'date' in df.columns or df.index.name == 'date':
+                date_col = df.index if df.index.name == 'date' else df['date']
+                if len(date_col) > 1:
+                    date_diffs = pd.to_datetime(date_col).diff().dropna()
+                    if len(date_diffs) > 0:
+                        expected_diff = date_diffs.median()
+                        irregular_gaps = (date_diffs > expected_diff * 2).sum()
+                        continuity_score = max(0, 1.0 - irregular_gaps / len(date_diffs))
+            quality_scores.append(continuity_score * 0.1)
+            
+            # 计算综合质量评分
+            total_quality_score = sum(quality_scores)
+            
+            return max(0.0, min(1.0, total_quality_score))
+            
+        except Exception as e:
+            self.logger.error(f"数据质量评分计算失败: {e}")
+            return 0.5  # 默认中等质量
+    
+    def _calculate_dynamic_confidence_threshold(self, df: pd.DataFrame, data_quality_score: float) -> float:
+        """阶段二优化：动态计算置信度阈值"""
+        try:
+            # 基础阈值
+            base_threshold = 0.3
+            
+            # 根据数据质量调整
+            quality_adjustment = 0.0
+            if data_quality_score > 0.9:
+                quality_adjustment = -0.05  # 高质量数据降低阈值
+            elif data_quality_score < 0.7:
+                quality_adjustment = 0.1   # 低质量数据提高阈值
+            
+            # 根据数据量调整
+            volume_adjustment = 0.0
+            data_length = len(df)
+            if data_length > 200:
+                volume_adjustment = -0.02  # 数据量大降低阈值
+            elif data_length < 100:
+                volume_adjustment = 0.05   # 数据量小提高阈值
+            
+            # 根据市场波动性调整
+            volatility_adjustment = 0.0
+            if 'close' in df.columns and len(df) > 20:
+                returns = df['close'].pct_change().dropna()
+                if len(returns) > 0:
+                    volatility = returns.std()
+                    if volatility > 0.05:  # 高波动性
+                        volatility_adjustment = 0.03
+                    elif volatility < 0.02:  # 低波动性
+                        volatility_adjustment = -0.02
+            
+            # 计算最终阈值
+            final_threshold = base_threshold + quality_adjustment + volume_adjustment + volatility_adjustment
+            
+            # 限制阈值范围
+            final_threshold = max(0.1, min(0.6, final_threshold))
+            
+            return final_threshold
+            
+        except Exception as e:
+            self.logger.error(f"动态置信度阈值计算失败: {e}")
+            return 0.3  # 默认阈值
+    
+    def _apply_intelligent_feature_interaction(self, df: pd.DataFrame) -> pd.DataFrame:
+        """阶段三优化：智能特征交互挖掘"""
+        try:
+            if df.empty:
+                return df
+            
+            interaction_df = df.copy()
+            numeric_columns = df.select_dtypes(include=[np.number]).columns
+            
+            if len(numeric_columns) < 2:
+                return interaction_df
+            
+            # 限制特征数量以提高速度
+            top_features = numeric_columns[:20]  # 只处理前20个数值特征
+            
+            # 1. 价格-成交量交互特征
+            # 确保价量交互特征总是可用
+            if 'close' in df.columns and 'volume' in df.columns:
+                interaction_df['price_volume_interaction'] = df['close'] * np.log1p(df['volume'])
+                interaction_df['price_volume_ratio'] = df['close'] / (df['volume'] + 1e-10)
+                interaction_df['volume_price_momentum'] = df['volume'].rolling(5).mean() * df['close'].pct_change()
+                
+                # 处理NaN值
+                interaction_df['price_volume_interaction'] = interaction_df['price_volume_interaction'].fillna(0.0)
+                interaction_df['price_volume_ratio'] = interaction_df['price_volume_ratio'].fillna(1.0)
+                interaction_df['volume_price_momentum'] = interaction_df['volume_price_momentum'].fillna(0.0)
+            else:
+                # 如果基础数据不可用，创建默认特征
+                interaction_df['price_volume_interaction'] = 0.0
+                interaction_df['price_volume_ratio'] = 1.0
+                interaction_df['volume_price_momentum'] = 0.0
+            
+            # 2. 技本指标交互
+            rsi_cols = [col for col in top_features if 'rsi' in col.lower()]
+            ma_cols = [col for col in top_features if 'ma' in col.lower() or 'ema' in col.lower()]
+            
+            # 确保RSI交互特征总是存在
+            if len(rsi_cols) >= 2:
+                interaction_df['rsi_divergence_enhanced'] = df[rsi_cols[0]] - df[rsi_cols[1]]
+                interaction_df['rsi_cross_signal'] = (df[rsi_cols[0]] > 50).astype(int) * (df[rsi_cols[1]] < 50).astype(int)
+            else:
+                interaction_df['rsi_divergence_enhanced'] = 0.0
+                interaction_df['rsi_cross_signal'] = 0.0
+            
+            # 确保MA交互特征总是存在
+            if len(ma_cols) >= 2:
+                interaction_df['ma_cross_momentum'] = (df[ma_cols[0]] / df[ma_cols[1]] - 1) * 100
+                interaction_df['ma_trend_strength'] = abs(df[ma_cols[0]] - df[ma_cols[1]]) / df[ma_cols[1]]
+                # 处理NaN值
+                interaction_df['ma_cross_momentum'] = interaction_df['ma_cross_momentum'].fillna(0.0)
+                interaction_df['ma_trend_strength'] = interaction_df['ma_trend_strength'].fillna(0.0)
+            else:
+                interaction_df['ma_cross_momentum'] = 0.0
+                interaction_df['ma_trend_strength'] = 0.0
+            
+            # 3. 波动率交互特征
+            volatility_cols = [col for col in top_features if 'volatility' in col.lower() or 'atr' in col.lower()]
+            if len(volatility_cols) >= 1 and 'close' in df.columns:
+                vol_col = volatility_cols[0]
+                interaction_df['volatility_price_ratio'] = df[vol_col] / (abs(df['close'].pct_change()) + 1e-10)
+                interaction_df['volatility_momentum'] = df[vol_col].rolling(3).mean() / df[vol_col].rolling(10).mean()
+            
+            # 4. 动量交互特征
+            momentum_cols = [col for col in top_features if 'momentum' in col.lower()]
+            if len(momentum_cols) >= 1:
+                mom_col = momentum_cols[0]
+                if 'volume' in df.columns:
+                    interaction_df['momentum_volume_sync'] = df[mom_col] * np.log1p(df['volume'])
+            
+            # 5. 确保常用交互特征总是存在
+            # 这些是集成引擎可能期望的常见特征
+            common_expected_features = [
+                'volume_pct_change_mult', 'volume_pct_change_ratio',
+                'close_volume_mult', 'close_volume_ratio'
+            ]
+            
+            # 创建常见的成交量和价格变化率交互特征
+            if 'volume' in df.columns and 'close' in df.columns:
+                pct_change = df['close'].pct_change().fillna(0)
+                interaction_df['volume_pct_change_mult'] = df['volume'] * pct_change
+                interaction_df['volume_pct_change_ratio'] = df['volume'] / (abs(pct_change) + 1e-10)
+                interaction_df['close_volume_mult'] = df['close'] * df['volume']
+                interaction_df['close_volume_ratio'] = df['close'] / (df['volume'] + 1e-10)
+                
+                # 处理NaN值
+                for feature_name in common_expected_features:
+                    if feature_name in interaction_df.columns:
+                        interaction_df[feature_name] = interaction_df[feature_name].fillna(0.0)
+            else:
+                # 如果基础数据不可用，设置默认值
+                for feature_name in common_expected_features:
+                    interaction_df[feature_name] = 0.0
+            
+            # 7. 高阶交互特征（非线性）
+            # 只在数据量足够时计算复杂交互
+            if len(df) > 100 and len(top_features) >= 5:
+                # 二阶交互项（限制数量）
+                for i in range(min(3, len(top_features))):
+                    for j in range(i+1, min(3, len(top_features))):
+                        col1, col2 = top_features[i], top_features[j]
+                        # 相乘交互
+                        mult_name = f'{col1}_{col2}_mult'
+                        ratio_name = f'{col1}_{col2}_ratio'
+                        if mult_name not in interaction_df.columns:
+                            interaction_df[mult_name] = df[col1] * df[col2]
+                        if ratio_name not in interaction_df.columns:
+                            interaction_df[ratio_name] = df[col1] / (abs(df[col2]) + 1e-10)
+            
+            # 8. 数据清理
+            # 处理无限值和缺失值
+            interaction_df = interaction_df.replace([np.inf, -np.inf], np.nan)
+            
+            # 用中位数填充新的交互特征
+            new_cols = set(interaction_df.columns) - set(df.columns)
+            for col in new_cols:
+                if interaction_df[col].isnull().any():
+                    interaction_df[col] = interaction_df[col].fillna(interaction_df[col].median())
+            
+            self.logger.info(f"智能特征交互完成，新增{len(new_cols)}个交互特征")
+            
+            return interaction_df
+            
+        except Exception as e:
+            self.logger.error(f"智能特征交互失败: {e}")
+            return df
+    
+    def _apply_enhanced_feature_engineering(self, df: pd.DataFrame) -> pd.DataFrame:
+        """阶段二优化：增强特征工程"""
+        try:
+            if df.empty:
+                return df
+            
+            enhanced_df = df.copy()
+            
+            # 1. 高级技术指标
+            if 'close' in enhanced_df.columns:
+                close_prices = enhanced_df['close']
+                
+                # Bollinger Bands 变异指标
+                bb_period = 20
+                bb_std = 2.5  # 更宽的布林带
+                bb_ma = close_prices.rolling(window=bb_period).mean()
+                bb_std_dev = close_prices.rolling(window=bb_period).std()
+                enhanced_df['bb_upper_wide'] = bb_ma + (bb_std_dev * bb_std)
+                enhanced_df['bb_lower_wide'] = bb_ma - (bb_std_dev * bb_std)
+                enhanced_df['bb_position'] = (close_prices - bb_ma) / (bb_std_dev * 2)
+                enhanced_df['bb_squeeze'] = (enhanced_df['bb_upper_wide'] - enhanced_df['bb_lower_wide']) / bb_ma
+                
+                # 多时间框架RSI
+                for period in [7, 14, 21, 30]:
+                    delta = close_prices.diff()
+                    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+                    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+                    rs = gain / loss
+                    enhanced_df[f'rsi_{period}'] = 100 - (100 / (1 + rs))
+                
+                # RSI组合指标
+                if 'rsi_14' in enhanced_df.columns and 'rsi_30' in enhanced_df.columns:
+                    enhanced_df['rsi_divergence'] = enhanced_df['rsi_14'] - enhanced_df['rsi_30']
+                    enhanced_df['rsi_momentum'] = enhanced_df['rsi_14'].diff()
+                
+                # 自适应移动平均
+                for period in [5, 10, 20, 50]:
+                    enhanced_df[f'ema_{period}'] = close_prices.ewm(span=period).mean()
+                    if period > 5:
+                        enhanced_df[f'ema_slope_{period}'] = enhanced_df[f'ema_{period}'].diff(5)
+                
+                # 价格动量指标
+                enhanced_df['price_velocity'] = close_prices.diff() / close_prices.shift(1)
+                enhanced_df['price_acceleration'] = enhanced_df['price_velocity'].diff()
+                
+                # 波动性指标
+                for window in [10, 20, 30]:
+                    returns = close_prices.pct_change()
+                    enhanced_df[f'volatility_{window}'] = returns.rolling(window=window).std()
+                    enhanced_df[f'volatility_ratio_{window}'] = enhanced_df[f'volatility_{window}'] / returns.rolling(window=window*2).std()
+            
+            # 2. 成交量增强指标
+            if 'volume' in enhanced_df.columns:
+                volume = enhanced_df['volume']
+                
+                # 成交量比率指标
+                for period in [5, 10, 20]:
+                    vol_ma = volume.rolling(window=period).mean()
+                    enhanced_df[f'volume_ratio_{period}'] = volume / vol_ma
+                    enhanced_df[f'volume_momentum_{period}'] = vol_ma.diff()
+                
+                # 成交量价格相关性
+                if 'close' in enhanced_df.columns:
+                    price_change = enhanced_df['close'].pct_change()
+                    volume_change = volume.pct_change()
+                    enhanced_df['price_volume_corr'] = price_change.rolling(window=20).corr(volume_change)
+                
+                # OBV变异指标
+                if 'close' in enhanced_df.columns:
+                    price_change = enhanced_df['close'].diff()
+                    obv = (volume * np.sign(price_change)).cumsum()
+                    enhanced_df['obv'] = obv
+                    enhanced_df['obv_ma'] = obv.rolling(window=20).mean()
+                    enhanced_df['obv_divergence'] = obv - enhanced_df['obv_ma']
+            
+            # 3. 横盘突破指标
+            if 'high' in enhanced_df.columns and 'low' in enhanced_df.columns and 'close' in enhanced_df.columns:
+                high_prices = enhanced_df['high']
+                low_prices = enhanced_df['low']
+                close_prices = enhanced_df['close']
+                
+                # 真实波动幅度
+                for period in [14, 21]:
+                    tr1 = high_prices - low_prices
+                    tr2 = abs(high_prices - close_prices.shift(1))
+                    tr3 = abs(low_prices - close_prices.shift(1))
+                    tr = np.maximum(tr1, np.maximum(tr2, tr3))
+                    enhanced_df[f'atr_{period}'] = tr.rolling(window=period).mean()
+                
+                # 突破信号
+                period = 20
+                highest = high_prices.rolling(window=period).max()
+                lowest = low_prices.rolling(window=period).min()
+                enhanced_df['breakout_upper'] = (close_prices > highest.shift(1)).astype(int)
+                enhanced_df['breakout_lower'] = (close_prices < lowest.shift(1)).astype(int)
+                enhanced_df['range_position'] = (close_prices - lowest) / (highest - lowest)
+            
+            # 4. 动量指标增强
+            if all(col in enhanced_df.columns for col in ['close', 'high', 'low']):
+                close_prices = enhanced_df['close']
+                high_prices = enhanced_df['high']
+                low_prices = enhanced_df['low']
+                
+                # Stochastic Oscillator 变异
+                for k_period, d_period in [(14, 3), (21, 5)]:
+                    lowest_low = low_prices.rolling(window=k_period).min()
+                    highest_high = high_prices.rolling(window=k_period).max()
+                    k_percent = 100 * ((close_prices - lowest_low) / (highest_high - lowest_low))
+                    enhanced_df[f'stoch_k_{k_period}'] = k_percent
+                    enhanced_df[f'stoch_d_{k_period}'] = k_percent.rolling(window=d_period).mean()
+                
+                # Williams %R
+                period = 14
+                highest = high_prices.rolling(window=period).max()
+                williams_r = -100 * (highest - close_prices) / (highest - low_prices.rolling(window=period).min())
+                enhanced_df['williams_r'] = williams_r
+            
+            # 5. 趋势强度指标
+            if 'close' in enhanced_df.columns:
+                close_prices = enhanced_df['close']
+                
+                # 多层级趋势判断
+                for short, long in [(5, 20), (10, 30), (20, 60)]:
+                    short_ma = close_prices.rolling(window=short).mean()
+                    long_ma = close_prices.rolling(window=long).mean()
+                    enhanced_df[f'trend_strength_{short}_{long}'] = (short_ma - long_ma) / long_ma
+                    enhanced_df[f'trend_direction_{short}_{long}'] = (short_ma > long_ma).astype(int)
+                
+                # 价格相对位置
+                for period in [20, 50, 100]:
+                    highest = close_prices.rolling(window=period).max()
+                    lowest = close_prices.rolling(window=period).min()
+                    enhanced_df[f'price_position_{period}'] = (close_prices - lowest) / (highest - lowest)
+            
+            # 6. 市场结构指标
+            if 'amount' in enhanced_df.columns and 'volume' in enhanced_df.columns:
+                # 平均成交价
+                avg_price = enhanced_df['amount'] / (enhanced_df['volume'] + 1e-10)
+                enhanced_df['avg_price'] = avg_price
+                if 'close' in enhanced_df.columns:
+                    enhanced_df['price_efficiency'] = enhanced_df['close'] / avg_price
+            
+            # 7. 数据清理和标准化
+            # 处理无限值和缺失值
+            enhanced_df = enhanced_df.replace([np.inf, -np.inf], np.nan)
+            
+            # 用中位数填充缺失值
+            numeric_columns = enhanced_df.select_dtypes(include=[np.number]).columns
+            for col in numeric_columns:
+                if enhanced_df[col].isnull().any():
+                    enhanced_df[col] = enhanced_df[col].fillna(enhanced_df[col].median())
+            
+            return enhanced_df
+            
+        except Exception as e:
+            self.logger.error(f"增强特征工程失败: {e}")
+            return df
             return "unknown"

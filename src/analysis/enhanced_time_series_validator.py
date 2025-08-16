@@ -180,9 +180,18 @@ class EnhancedTimeSeriesValidator:
             
             if data_length < n_splits * test_size * 2:
                 # 数据不足，使用简单时序分割
-                tscv = TimeSeriesSplit(n_splits=min(n_splits, data_length // (test_size * 2)))
-                for train_idx, test_idx in tscv.split(data):
-                    splits.append((train_idx, test_idx))
+                effective_n_splits = max(2, min(n_splits, data_length // (test_size * 2)))
+                if data_length >= effective_n_splits * test_size + test_size:
+                    tscv = TimeSeriesSplit(n_splits=effective_n_splits)
+                    for train_idx, test_idx in tscv.split(data):
+                        splits.append((train_idx, test_idx))
+                else:
+                    # 数据极少，创建单个分割用于验证
+                    train_size = max(test_size, data_length * 2 // 3)
+                    train_idx = np.arange(0, train_size)
+                    test_idx = np.arange(train_size, min(data_length, train_size + test_size))
+                    if len(train_idx) > 0 and len(test_idx) > 0:
+                        splits.append((train_idx, test_idx))
             else:
                 # 考虑季节性的智能分割
                 if seasonal_info.get('has_seasonality', False):
