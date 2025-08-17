@@ -1,5 +1,3 @@
-import { io, Socket } from 'socket.io-client';
-
 // WebSocket配置
 const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000';
 
@@ -103,7 +101,7 @@ export interface SystemStatus {
 }
 
 class WebSocketService {
-  private socket: Socket | null = null;
+  private socket: WebSocket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 3000;
@@ -118,7 +116,7 @@ class WebSocketService {
     return new Promise((resolve, reject) => {
       try {
         // 创建WebSocket连接 (使用原生WebSocket而不是socket.io)
-        this.socket = new WebSocket(`${WS_URL}/ws/realtime`) as any;
+        this.socket = new WebSocket(`${WS_URL}/ws/realtime`);
         
         this.socket.onopen = () => {
           console.log('WebSocket连接已建立');
@@ -127,7 +125,7 @@ class WebSocketService {
           resolve();
         };
 
-        this.socket.onmessage = (event) => {
+        this.socket.onmessage = (event: MessageEvent) => {
           try {
             const message: WebSocketMessage = JSON.parse(event.data);
             this.handleMessage(message);
@@ -142,7 +140,7 @@ class WebSocketService {
           this.attemptReconnect();
         };
 
-        this.socket.onerror = (error) => {
+        this.socket.onerror = (error: Event) => {
           console.error('WebSocket连接错误:', error);
           this.errorHandlers.forEach(handler => handler(error));
           reject(error);
@@ -212,7 +210,7 @@ class WebSocketService {
   subscribe(subscriptionType: SubscriptionType, handler: (data: any) => void): void {
     this.messageHandlers.set(subscriptionType, handler);
     
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+    if (this.socket !== null && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify({
         type: 'subscribe',
         subscription: subscriptionType
@@ -224,7 +222,7 @@ class WebSocketService {
   unsubscribe(subscriptionType: SubscriptionType): void {
     this.messageHandlers.delete(subscriptionType);
     
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+    if (this.socket !== null && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify({
         type: 'unsubscribe',
         subscription: subscriptionType
@@ -247,7 +245,7 @@ class WebSocketService {
 
   // 检查连接状态
   get isConnected(): boolean {
-    return this.socket?.readyState === WebSocket.OPEN;
+    return this.socket !== null && this.socket.readyState === WebSocket.OPEN;
   }
 
   // 获取连接状态
