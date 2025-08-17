@@ -1,0 +1,209 @@
+{
+  "user_info": {
+    "user_id": "preset_demo_001",
+    "user_name": "A股价值投资者",
+    "risk_preference": "moderate",
+    "investment_horizon": "medium_term",
+    "investment_style": "value_growth",
+    "creation_date": "2025-01-01"
+  },
+  "portfolio_metadata": {
+    "portfolio_name": "A股核心价值组合",
+    "last_updated": "2025-08-17",
+    "currency": "CNY",
+    "benchmark": "000300",
+    "management_style": "active",
+    "rebalancing_frequency": "quarterly"
+  },
+  "total_assets": 1000000.0,
+  "cash_position": 75000.0,
+  "holdings": [
+    {
+      "stock_code": "600519",
+      "stock_name": "贵州茅台",
+      "shares": 50,
+      "cost_price": 1680.00,
+      "purchase_date": "2025-02-15",
+      "sector": "食品饮料",
+      "market_cap_level": "large",
+      "notes": "消费龙头，核心资产，长期持有",
+      "risk_level": "low",
+      "liquidity_level": "high"
+    },
+    {
+      "stock_code": "000858",
+      "stock_name": "五粮液",
+      "shares": 800,
+      "cost_price": 105.50,
+      "purchase_date": "2025-03-10",
+      "sector": "食品饮料",
+      "market_cap_level": "large",
+      "notes": "白酒次龙头，估值相对合理",
+      "risk_level": "low",
+      "liquidity_level": "high"
+    },
+    {
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "shares": 4000,
+      "cost_price": 12.50,
+      "purchase_date": "2025-04-05",
+      "sector": "银行",
+      "market_cap_level": "large",
+      "notes": "股份制银行龙头，零售转型成功",
+      "risk_level": "low",
+      "liquidity_level": "high"
+    },
+    {
+      "stock_code": "600036",
+      "stock_name": "招商银行",
+      "shares": 1500,
+      "cost_price": 35.20,
+      "purchase_date": "2025-03-20",
+      "sector": "银行",
+      "market_cap_level": "large",
+      "notes": "零售银行龙头，长期价值投资首选",
+      "risk_level": "low",
+      "liquidity_level": "high"
+    },
+    {
+      "stock_code": "300750",
+      "stock_name": "宁德时代",
+      "shares": 150,
+      "cost_price": 245.80,
+      "purchase_date": "2025-05-12",
+      "sector": "电池",
+      "market_cap_level": "large",
+      "notes": "新能源汽车产业链核心，全球电池龙头",
+      "risk_level": "medium",
+      "liquidity_level": "high"
+    },
+    {
+      "stock_code": "002415",
+      "stock_name": "海康威视",
+      "shares": 2000,
+      "cost_price": 32.10,
+      "purchase_date": "2025-04-18",
+      "sector": "电子",
+      "market_cap_level": "large",
+      "notes": "安防龙头，AI+硬件双重布局",
+      "risk_level": "medium",
+      "liquidity_level": "high"
+    },
+    {
+      "stock_code": "600276",
+      "stock_name": "恒瑞医药",
+      "shares": 1000,
+      "cost_price": 42.50,
+      "purchase_date": "2025-06-08",
+      "sector": "医药生物",
+      "market_cap_level": "large",
+      "notes": "创新药龙头，研发实力国内领先",
+      "risk_level": "medium",
+      "liquidity_level": "high"
+    },
+    {
+      "stock_code": "601318",
+      "stock_name": "中国平安",
+      "shares": 1200,
+      "cost_price": 45.60,
+      "purchase_date": "2025-01-25",
+      "sector": "非银金融",
+      "market_cap_level": "large",
+      "notes": "综合金融龙头，分红稳定价值股",
+      "risk_level": "low",
+      "liquidity_level": "high"
+    },
+    {
+      "stock_code": "000002",
+      "stock_name": "万科A",
+      "shares": 3000,
+      "cost_price": 8.80,
+      "purchase_date": "2025-07-02",
+      "sector": "房地产",
+      "market_cap_level": "large",
+      "notes": "地产龙头，等待行业周期底部反转",
+      "risk_level": "high",
+      "liquidity_level": "high"
+    },
+    {
+      "stock_code": "000661",
+      "stock_name": "长春高新",
+      "shares": 300,
+      "cost_price": 128.90,
+      "purchase_date": "2025-05-28",
+      "sector": "医药生物",
+      "market_cap_level": "medium",
+      "notes": "生长激素细分龙头，利基市场优势",
+      "risk_level": "medium",
+      "liquidity_level": "medium"
+    },
+    {
+      "stock_code": "688981",
+      "stock_name": "中芯国际",
+      "shares": 1000,
+      "cost_price": 55.20,
+      "purchase_date": "2025-06-15",
+      "sector": "半导体",
+      "market_cap_level": "large",
+      "notes": "大陆晶圆代工龙头，国产替代核心标的",
+      "risk_level": "high",
+      "liquidity_level": "medium"
+    },
+    {
+      "stock_code": "002594",
+      "stock_name": "比亚迪",
+      "shares": 400,
+      "cost_price": 168.50,
+      "purchase_date": "2025-04-22",
+      "sector": "汽车",
+      "market_cap_level": "large",
+      "notes": "新能源汽车龙头，垂直一体化优势",
+      "risk_level": "medium",
+      "liquidity_level": "high"
+    }
+  ],
+  "sector_allocation_target": {
+    "食品饮料": 0.20,
+    "银行": 0.15,
+    "医药生物": 0.15,
+    "电子": 0.10,
+    "新能源": 0.15,
+    "非银金融": 0.08,
+    "房地产": 0.05,
+    "半导体": 0.07,
+    "现金": 0.05
+  },
+  "trading_rules": {
+    "max_single_position_ratio": 0.12,
+    "max_sector_ratio": 0.25,
+    "stop_loss_ratio": -0.08,
+    "profit_taking_levels": [0.20, 0.35, 0.50],
+    "max_daily_trades": 2,
+    "rebalancing_threshold": 0.08,
+    "min_holding_period_days": 30
+  },
+  "risk_management": {
+    "var_confidence": 0.95,
+    "max_drawdown_tolerance": 0.12,
+    "volatility_target": 0.18,
+    "cash_reserve_min": 0.05,
+    "cash_reserve_max": 0.15,
+    "correlation_limit": 0.7,
+    "beta_range": [0.8, 1.2]
+  },
+  "performance_targets": {
+    "annual_return_target": 0.15,
+    "sharpe_ratio_target": 1.2,
+    "max_drawdown_limit": 0.12,
+    "win_rate_target": 0.60,
+    "benchmark_alpha_target": 0.05
+  },
+  "investment_philosophy": {
+    "strategy": "价值成长投资，核心资产配置",
+    "time_horizon": "3-5年长期持有为主",
+    "risk_philosophy": "追求绝对收益，控制最大回撤",
+    "selection_criteria": "行业龙头、护城河深、成长确定性高",
+    "rebalancing_philosophy": "逆向调仓，低买高卖"
+  }
+}
