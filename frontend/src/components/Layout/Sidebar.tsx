@@ -10,6 +10,7 @@ import {
   SettingOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -29,6 +30,11 @@ const Sidebar: React.FC = () => {
       key: '/sectors',
       icon: <BarChartOutlined />,
       label: '板块分析',
+    },
+    {
+      key: '/stock-recommendation',
+      icon: <ThunderboltOutlined />,
+      label: '股票推荐',
     },
     {
       key: '/stocks',

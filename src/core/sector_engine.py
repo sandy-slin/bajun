@@ -44,20 +44,20 @@ class SectorEngine:
         self.momentum_window = 20 # 动量计算窗口
         self.rsi_window = 14      # RSI计算窗口
         
-    async def analyze_top_sectors(
+    async def analyze_all_sectors(
         self, 
         lookback_months: int = 6,
         top_n: int = 5
     ) -> Dict:
         """
-        分析并返回TOP N板块排名
+        分析所有板块并返回完整排名（突出显示TOP N）
         
         Args:
             lookback_months: 回望月数
-            top_n: 返回前N个板块
+            top_n: 返回前N个板块数量（用于突出显示）
             
         Returns:
-            Dict: 包含TOP5板块排名和分析结果
+            Dict: 包含所有板块排名和分析结果，TOP N突出显示
         """
         try:
             start_time = datetime.now()
@@ -86,13 +86,21 @@ class SectorEngine:
             # 3. 生成分析结果
             analysis_result = {
                 'timestamp': datetime.now().isoformat(),
+                'data_period': {
+                    'start_date': (datetime.now() - timedelta(days=lookback_months * 30)).strftime('%Y-%m-%d'),
+                    'end_date': datetime.now().strftime('%Y-%m-%d'),
+                    'analysis_date': datetime.now().strftime('%Y-%m-%d'),
+                    'lookback_months': lookback_months
+                },
                 'analysis_params': {
                     'lookback_months': lookback_months,
                     'top_n': top_n,
-                    'scoring_weights': self.scoring_weights
+                    'scoring_weights': self.scoring_weights,
+                    'algorithm_version': 'Enhanced-v1.3.0'
                 },
                 'total_sectors_analyzed': len(sector_scores),
-                'top_sectors': top_sectors,
+                'all_sectors': sector_scores,  # 完整列表
+                'top_sectors': top_sectors,    # TOP N突出显示
                 'market_overview': await self._generate_market_overview(sector_scores),
                 'processing_time_seconds': (datetime.now() - start_time).total_seconds()
             }
@@ -164,15 +172,22 @@ class SectorEngine:
             
             return {
                 'sector_name': sector_name,
-                'composite_score': composite_score,
-                'momentum_score': momentum_score,
-                'relative_strength_score': relative_strength_score,
+                'sector_code': self.sw_sectors.get(sector_name, 'N/A'),
+                'composite_score': round(composite_score, 1),
+                'momentum_score': round(momentum_score, 1),
+                'relative_strength_score': round(relative_strength_score, 1),
                 'investment_logic': investment_logic,
                 'latest_price': float(df.iloc[-1]['close']) if 'close' in df.columns else 0.0,
-                'price_change_5d': self._calculate_price_change(df, 5),
+                'price_change_5d': round(self._calculate_price_change(df, 5), 2),
+                'price_change_10d': round(self._calculate_price_change(df, 10), 2),
+                'price_change_20d': round(self._calculate_price_change(df, 20), 2),
                 'volume_trend': self._calculate_volume_trend(df),
+                'volume_ratio': self._calculate_volume_ratio(df),
                 'risk_level': self._assess_risk_level(df),
-                'confidence_level': self._calculate_confidence(momentum_score, relative_strength_score)
+                'volatility': round(self._calculate_volatility(df), 3),
+                'confidence_level': round(self._calculate_confidence(momentum_score, relative_strength_score), 3),
+                'data_quality': self._assess_data_quality(df),
+                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             
         except Exception as e:
@@ -373,12 +388,46 @@ class SectorEngine:
         recent_volume = np.mean(df['volume'].iloc[-5:])
         historical_volume = np.mean(df['volume'].iloc[-20:-5]) if len(df) >= 20 else np.mean(df['volume'].iloc[:-5])
         
-        if recent_volume > historical_volume * 1.2:
-            return "increasing"
+        if recent_volume > historical_volume * 1.5:
+            return "surge"      # 放量
+        elif recent_volume > historical_volume * 1.2:
+            return "increasing" # 温和放量
+        elif recent_volume < historical_volume * 0.7:
+            return "shrinking"  # 缩量
         elif recent_volume < historical_volume * 0.8:
-            return "decreasing"
+            return "decreasing" # 温和缩量
         else:
-            return "stable"
+            return "stable"     # 平稳
+            
+    def _calculate_volume_ratio(self, df: pd.DataFrame) -> float:
+        """计算成交量比率"""
+        if 'volume' not in df.columns or len(df) < 10:
+            return 1.0
+            
+        recent_volume = np.mean(df['volume'].iloc[-5:])
+        historical_volume = np.mean(df['volume'].iloc[-20:-5]) if len(df) >= 20 else np.mean(df['volume'].iloc[:-5])
+        
+        return round(recent_volume / historical_volume if historical_volume > 0 else 1.0, 2)
+        
+    def _calculate_volatility(self, df: pd.DataFrame) -> float:
+        """计算年化波动率"""
+        if len(df) < 20:
+            return 0.0
+            
+        returns = df['close'].pct_change().dropna()
+        volatility = returns.std() * np.sqrt(252)  # 年化波动率
+        return volatility
+        
+    def _assess_data_quality(self, df: pd.DataFrame) -> str:
+        """评估数据质量"""
+        if len(df) < 10:
+            return "poor"
+        elif len(df) < 30:
+            return "fair"
+        elif len(df) < 90:
+            return "good"
+        else:
+            return "excellent"
     
     def _assess_risk_level(self, df: pd.DataFrame) -> str:
         """评估风险水平"""
@@ -412,57 +461,128 @@ class SectorEngine:
         relative_strength_score: float, 
         composite_score: float
     ) -> str:
-        """生成投资逻辑说明"""
+        """生成详细投资逻辑说明"""
         
         logic_parts = []
         
-        # 综合评分逻辑
-        if composite_score >= 75:
-            logic_parts.append(f"【强烈推荐】{sector_name}板块综合评分{composite_score:.1f}分，处于高位")
+        # 1. 综合评分与投资建议
+        if composite_score >= 80:
+            logic_parts.append(f"【强烈推荐⭐⭐⭐】{sector_name}板块综合评分{composite_score:.1f}分，属于优质投资标的")
+            logic_parts.append("建议重点关注，可适当增加配置权重")
+        elif composite_score >= 70:
+            logic_parts.append(f"【积极推荐⭐⭐】{sector_name}板块综合评分{composite_score:.1f}分，投资价值较高")
+            logic_parts.append("建议标准配置，密切跟踪")
         elif composite_score >= 60:
-            logic_parts.append(f"【适度推荐】{sector_name}板块综合评分{composite_score:.1f}分，表现良好")
+            logic_parts.append(f"【适度推荐⭐】{sector_name}板块综合评分{composite_score:.1f}分，表现稳健")
+            logic_parts.append("可考虑适量配置")
         elif composite_score >= 40:
-            logic_parts.append(f"【中性观点】{sector_name}板块综合评分{composite_score:.1f}分，表现平稳")
+            logic_parts.append(f"【中性观点】{sector_name}板块综合评分{composite_score:.1f}分，走势平稳")
+            logic_parts.append("建议观望，等待更好时机")
         else:
-            logic_parts.append(f"【谨慎观望】{sector_name}板块综合评分{composite_score:.1f}分，表现偏弱")
+            logic_parts.append(f"【谨慎观望】{sector_name}板块综合评分{composite_score:.1f}分，短期承压")
+            logic_parts.append("不建议新增投资，考虑减仓")
         
-        # 动量分析逻辑
+        # 2. 技术面分析
         if momentum_score >= 70:
-            logic_parts.append(f"动量指标强劲({momentum_score:.1f}分)，价格趋势向上")
-        elif momentum_score <= 30:
-            logic_parts.append(f"动量指标偏弱({momentum_score:.1f}分)，短期承压")
+            if momentum_score >= 85:
+                logic_parts.append(f"技术面：动量指标极强({momentum_score:.1f}分)，多头趋势确立，短期上涨动能充足")
+            else:
+                logic_parts.append(f"技术面：动量指标强劲({momentum_score:.1f}分)，价格趋势向上，技术面支撑较好")
+        elif momentum_score >= 50:
+            logic_parts.append(f"技术面：动量指标中性({momentum_score:.1f}分)，价格波动平稳，缺乏明确方向")
+        elif momentum_score >= 30:
+            logic_parts.append(f"技术面：动量指标偏弱({momentum_score:.1f}分)，价格承压，技术面偏空")
+        else:
+            logic_parts.append(f"技术面：动量指标很弱({momentum_score:.1f}分)，下行压力较大，技术面恶化")
         
-        # 相对强弱逻辑
+        # 3. 相对强弱分析
         if relative_strength_score >= 70:
-            logic_parts.append(f"相对强弱指标优秀({relative_strength_score:.1f}分)，板块具备相对优势")
-        elif relative_strength_score <= 30:
-            logic_parts.append(f"相对强弱指标偏弱({relative_strength_score:.1f}分)，相对表现不佳")
+            logic_parts.append(f"相对表现：板块强弱指标优秀({relative_strength_score:.1f}分)，相比大盘具备明显优势，资金青睐")
+        elif relative_strength_score >= 50:
+            logic_parts.append(f"相对表现：板块强弱指标平稳({relative_strength_score:.1f}分)，与大盘同步波动")
+        elif relative_strength_score >= 30:
+            logic_parts.append(f"相对表现：板块强弱指标偏弱({relative_strength_score:.1f}分)，跑输大盘，资金流出")
+        else:
+            logic_parts.append(f"相对表现：板块强弱指标很弱({relative_strength_score:.1f}分)，大幅跑输大盘，避险情绪浓厚")
+        
+        # 4. 风险提示与操作建议
+        risk_level = "高" if composite_score >= 75 else "中" if composite_score >= 50 else "低"
+        logic_parts.append(f"风险收益比：{risk_level}，建议采用{'积极' if composite_score >= 70 else '稳健' if composite_score >= 50 else '保守'}型投资策略")
         
         return "；".join(logic_parts)
     
     async def _generate_market_overview(self, sector_scores: List[Dict]) -> Dict:
-        """生成市场概览"""
+        """生成详细市场概览"""
         if not sector_scores:
             return {}
             
         scores = [s['composite_score'] for s in sector_scores]
+        avg_score = np.mean(scores)
+        
+        # 分级统计
+        excellent_count = len([s for s in scores if s >= 80])  # 优秀
+        good_count = len([s for s in scores if 70 <= s < 80])   # 良好
+        fair_count = len([s for s in scores if 50 <= s < 70])   # 一般
+        poor_count = len([s for s in scores if s < 50])         # 较差
         
         return {
             'total_sectors': len(sector_scores),
-            'average_score': np.mean(scores),
-            'score_std': np.std(scores),
-            'strong_sectors_count': len([s for s in scores if s >= 70]),
-            'weak_sectors_count': len([s for s in scores if s <= 40]),
-            'market_sentiment': self._assess_market_sentiment(np.mean(scores))
+            'average_score': round(avg_score, 1),
+            'score_std': round(np.std(scores), 1),
+            'score_distribution': {
+                'excellent': {'count': excellent_count, 'percentage': round(excellent_count/len(scores)*100, 1)},
+                'good': {'count': good_count, 'percentage': round(good_count/len(scores)*100, 1)},
+                'fair': {'count': fair_count, 'percentage': round(fair_count/len(scores)*100, 1)},
+                'poor': {'count': poor_count, 'percentage': round(poor_count/len(scores)*100, 1)}
+            },
+            'strong_sectors_count': excellent_count + good_count,
+            'weak_sectors_count': poor_count,
+            'market_sentiment': self._assess_market_sentiment(avg_score),
+            'market_analysis': self._generate_market_analysis(avg_score, sector_scores),
+            'top_3_sectors': [s['sector_name'] for s in sorted(sector_scores, key=lambda x: x['composite_score'], reverse=True)[:3]],
+            'bottom_3_sectors': [s['sector_name'] for s in sorted(sector_scores, key=lambda x: x['composite_score'])[:3]]
         }
+        
+    def _generate_market_analysis(self, avg_score: float, sector_scores: List[Dict]) -> str:
+        """生成市场分析报告"""
+        analysis_parts = []
+        
+        # 整体市场判断
+        if avg_score >= 70:
+            analysis_parts.append(f"市场整体表现强劲，平均得分{avg_score:.1f}分，多数板块呈现积极态势")
+        elif avg_score >= 60:
+            analysis_parts.append(f"市场整体表现稳健，平均得分{avg_score:.1f}分，板块分化程度适中")
+        elif avg_score >= 50:
+            analysis_parts.append(f"市场整体表现平稳，平均得分{avg_score:.1f}分，板块走势相对均衡")
+        else:
+            analysis_parts.append(f"市场整体承压，平均得分{avg_score:.1f}分，多数板块表现低迷")
+        
+        # 板块表现分析
+        high_momentum_sectors = [s for s in sector_scores if s['momentum_score'] >= 70]
+        if high_momentum_sectors:
+            analysis_parts.append(f"技术面较强的板块包括：{', '.join([s['sector_name'] for s in high_momentum_sectors[:3]])}等")
+        
+        # 投资建议
+        if avg_score >= 65:
+            analysis_parts.append("建议：积极布局优质板块，把握结构性机会")
+        elif avg_score >= 50:
+            analysis_parts.append("建议：稳健配置，关注龙头板块的投资机会")
+        else:
+            analysis_parts.append("建议：保持谨慎，重点关注防御性板块")
+            
+        return "；".join(analysis_parts)
     
     def _assess_market_sentiment(self, avg_score: float) -> str:
         """评估市场情绪"""
-        if avg_score >= 65:
-            return "optimistic"
-        elif avg_score >= 50:
-            return "neutral" 
+        if avg_score >= 75:
+            return "very_optimistic"   # 非常乐观
+        elif avg_score >= 65:
+            return "optimistic"        # 乐观
+        elif avg_score >= 55:
+            return "neutral_positive"  # 中性偏乐观
+        elif avg_score >= 45:
+            return "neutral"           # 中性
         elif avg_score >= 35:
-            return "cautious"
+            return "cautious"          # 谨慎
         else:
-            return "pessimistic"
+            return "pessimistic"       # 悲观

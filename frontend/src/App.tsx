@@ -5,7 +5,9 @@ import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
 import Dashboard from './pages/Dashboard';
 import SectorAnalysis from './pages/SectorAnalysis';
+import SectorAnalysisEnhanced from './pages/SectorAnalysisEnhanced';
 import StockSelection from './pages/StockSelection';
+import StockRecommendation from './pages/StockRecommendation';
 import Portfolio from './pages/Portfolio';
 import TradingAssistant from './pages/TradingAssistant';
 import Settings from './pages/Settings';
@@ -34,8 +36,10 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/sectors" element={<SectorAnalysis />} />
+                    <Route path="/sectors" element={<SectorAnalysisEnhanced />} />
+                    <Route path="/sectors-basic" element={<SectorAnalysis />} />
                     <Route path="/stocks" element={<StockSelection />} />
+                    <Route path="/stock-recommendation" element={<StockRecommendation />} />
                     <Route path="/portfolio" element={<Portfolio />} />
                     <Route path="/trading" element={<TradingAssistant />} />
                     <Route path="/settings" element={<Settings />} />
