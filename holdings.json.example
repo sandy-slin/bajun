@@ -1,0 +1,106 @@
+{
+  "portfolio_info": {
+    "total_value": 1000000,
+    "cash_position": 150000,
+    "last_updated": "2025-08-17",
+    "risk_profile": "moderate",
+    "investment_horizon": "medium_term"
+  },
+  "holdings": [
+    {
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "sector": "银行",
+      "shares": 10000,
+      "avg_cost": 12.50,
+      "current_price": 13.20,
+      "market_value": 132000,
+      "weight": 0.132,
+      "unrealized_pnl": 7000,
+      "unrealized_pnl_pct": 0.056,
+      "days_held": 45,
+      "purchase_date": "2025-07-03"
+    },
+    {
+      "stock_code": "000002",
+      "stock_name": "万科A",
+      "sector": "房地产",
+      "shares": 5000,
+      "avg_cost": 15.80,
+      "current_price": 14.60,
+      "market_value": 73000,
+      "weight": 0.073,
+      "unrealized_pnl": -6000,
+      "unrealized_pnl_pct": -0.076,
+      "days_held": 28,
+      "purchase_date": "2025-07-20"
+    },
+    {
+      "stock_code": "300059",
+      "stock_name": "东方财富", 
+      "sector": "非银金融",
+      "shares": 8000,
+      "avg_cost": 18.75,
+      "current_price": 19.90,
+      "market_value": 159200,
+      "weight": 0.159,
+      "unrealized_pnl": 9200,
+      "unrealized_pnl_pct": 0.061,
+      "days_held": 62,
+      "purchase_date": "2025-06-16"
+    },
+    {
+      "stock_code": "600519",
+      "stock_name": "贵州茅台",
+      "sector": "食品饮料", 
+      "shares": 200,
+      "avg_cost": 1850.00,
+      "current_price": 1920.00,
+      "market_value": 384000,
+      "weight": 0.384,
+      "unrealized_pnl": 14000,
+      "unrealized_pnl_pct": 0.038,
+      "days_held": 120,
+      "purchase_date": "2025-04-19"
+    },
+    {
+      "stock_code": "000858",
+      "stock_name": "五粮液",
+      "sector": "食品饮料",
+      "shares": 800,
+      "avg_cost": 125.60,
+      "current_price": 118.40,
+      "market_value": 94720,
+      "weight": 0.095,
+      "unrealized_pnl": -5760,
+      "unrealized_pnl_pct": -0.057,
+      "days_held": 35,
+      "purchase_date": "2025-07-13"
+    }
+  ],
+  "portfolio_summary": {
+    "total_positions": 5,
+    "total_market_value": 842920,
+    "total_unrealized_pnl": 18440,
+    "total_unrealized_pnl_pct": 0.022,
+    "sector_allocation": {
+      "食品饮料": 0.479,
+      "非银金融": 0.159,
+      "银行": 0.132,
+      "房地产": 0.073,
+      "现金": 0.150
+    },
+    "concentration_risk": {
+      "max_single_position": 0.384,
+      "top3_concentration": 0.675,
+      "sector_concentration": 0.479
+    }
+  },
+  "trading_constraints": {
+    "max_single_position": 0.10,
+    "max_sector_allocation": 0.30,
+    "min_cash_position": 0.05,
+    "stop_loss_threshold": 0.15,
+    "profit_taking_threshold": 0.20
+  }
+}

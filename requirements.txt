@@ -1,14 +1,61 @@
+# Core Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+
+# Data Processing (High Performance)
+polars==0.20.0
+pyarrow==14.0.0
+numpy>=1.24.0
+pandas==2.1.4  # Required by akshare
+
+# Machine Learning
+lightgbm==4.1.0
+scikit-learn>=1.3.0
+onnxruntime==1.16.0
+xgboost>=1.7.0
+catboost>=1.2.0
+
+# Database and Caching
+redis==5.0.1
+sqlalchemy==2.0.23
+
+# Real-time Data
+websocket-client==1.6.4
 aiohttp>=3.11.13
-pandas==2.1.4
+asyncio-mqtt==0.16.1
+
+# A-Share Data Sources
+akshare>=1.16.72
+requests==2.31.0
+TA-Lib>=0.4.25
+
+# Testing Framework
 pytest==7.4.3
 pytest-asyncio==0.23.2
 pytest-cov==4.1.0
-akshare>=1.16.72
-requests==2.31.0
-numpy>=1.24.0
-scikit-learn>=1.3.0
+httpx==0.25.2
+
+# Development Tools
+streamlit==1.28.0
+black==23.11.0
+flake8==6.1.0
+
+# Scientific Computing
 scipy>=1.10.0
 joblib>=1.3.0
-TA-Lib>=0.4.25
-xgboost>=1.7.0
-catboost>=1.2.0
+statsmodels==0.14.0
+hmmlearn==0.3.0
+
+# Configuration and Utilities
+python-dotenv==1.0.0
+click==8.1.7
+rich==13.7.0
+loguru==0.7.2
+
+# Security
+cryptography==41.0.8
+
+# Mac Native App Building (Production only)
+# pyinstaller==6.2.0
+# py2app==0.28.7

@@ -4,7 +4,7 @@ __pycache__/
 *$py.class
 
 #cache
-cache
+.cache
 
 # C extensions
 *.so
@@ -165,7 +165,7 @@ run.sh
 .env
 
 # Cache and temporary files
-cache/*.json
+.cache/*.json
 temp/
 tmp/
 
@@ -177,10 +177,30 @@ checkpoints/
 catboost_info/
 
 # Project specific - Cache and Reports
-cache/
+.cache/
 reports/
 
-# Backtest and prediction output files
-systematic_backtest_report_*.json
+# Temporary development files
+temp_*.py
+test_*.py
+debug_*.py
+*_temp.py
+*_debug.py
+*_test.py
+
+# Development artifacts
 backtest_summary_*.txt
+systematic_backtest_report_*.json
 sector_predictions_*.json
+monitor_report_*.json
+
+# Backup directory (hidden directory, not tracked by git)
+.backup/
+
+# Temporary analysis outputs (hidden directories)
+.temp_analysis/
+.temp_reports/
+.temp_results/
+.temp_data/
+.debug_output/
+.development/

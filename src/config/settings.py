@@ -17,7 +17,7 @@ class Settings:
     deepseek_base_url: str = "https://api.deepseek.com/v1"
     
     # 数据配置
-    cache_dir: str = "cache"
+    cache_dir: str = ".cache"
     cache_expiry_days: int = 7
     
     # 分析配置
