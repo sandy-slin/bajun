@@ -194,6 +194,18 @@ systematic_backtest_report_*.json
 sector_predictions_*.json
 monitor_report_*.json
 
+# Frontend specific
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
 # Backup directory (hidden directory, not tracked by git)
 .backup/
 

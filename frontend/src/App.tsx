@@ -1,0 +1,48 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Layout } from 'antd';
+import Sidebar from './components/Layout/Sidebar';
+import Header from './components/Layout/Header';
+import Dashboard from './pages/Dashboard';
+import SectorAnalysis from './pages/SectorAnalysis';
+import StockSelection from './pages/StockSelection';
+import Portfolio from './pages/Portfolio';
+import TradingAssistant from './pages/TradingAssistant';
+import Settings from './pages/Settings';
+import { WebSocketProvider } from './contexts/WebSocketContext';
+import { ApiProvider } from './contexts/ApiContext';
+import './App.css';
+
+const { Content } = Layout;
+
+function App() {
+  return (
+    <ApiProvider>
+      <WebSocketProvider>
+        <Router>
+          <Layout style={{ minHeight: '100vh' }}>
+            <Sidebar />
+            <Layout>
+              <Header />
+              <Content style={{ padding: '24px', background: '#f5f5f5' }}>
+                <div className="fade-in">
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/sectors" element={<SectorAnalysis />} />
+                    <Route path="/stocks" element={<StockSelection />} />
+                    <Route path="/portfolio" element={<Portfolio />} />
+                    <Route path="/trading" element={<TradingAssistant />} />
+                    <Route path="/settings" element={<Settings />} />
+                  </Routes>
+                </div>
+              </Content>
+            </Layout>
+          </Layout>
+        </Router>
+      </WebSocketProvider>
+    </ApiProvider>
+  );
+}
+
+export default App;
