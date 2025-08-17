@@ -179,3 +179,8 @@ catboost_info/
 # Project specific - Cache and Reports
 cache/
 reports/
+
+# Backtest and prediction output files
+systematic_backtest_report_*.json
+backtest_summary_*.txt
+sector_predictions_*.json
