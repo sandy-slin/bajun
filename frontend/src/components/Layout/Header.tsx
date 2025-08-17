@@ -125,13 +125,13 @@ const Header: React.FC = () => {
         justifyContent: 'space-between',
         alignItems: 'center',
         borderBottom: '1px solid #f0f0f0',
-        marginLeft: 240, // 为侧边栏留出空间
         position: 'fixed',
         top: 0,
         right: 0,
-        left: 240,
+        left: 0,
         zIndex: 99,
         height: 64,
+        width: '100%'
       }}
     >
       <div>

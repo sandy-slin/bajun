@@ -23,7 +23,7 @@ const SectorAnalysis: React.FC = () => {
   };
 
   return (
-    <div style={{ paddingTop: 64 }}>
+    <div>
       <div style={{ marginBottom: 24 }}>
         <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
           <BarChartOutlined style={{ marginRight: 12 }} />
