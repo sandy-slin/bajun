@@ -6,6 +6,7 @@
 """
 
 from fastapi import APIRouter, HTTPException, Query, Path
+from pydantic import BaseModel
 from typing import List, Dict, Optional
 import logging
 import asyncio
@@ -459,10 +460,14 @@ class StockAnalysisService:
 # 创建服务实例
 stock_service = StockAnalysisService()
 
+class TopSectorsStockRequest(BaseModel):
+    """基于TOP5板块的股票推荐请求"""
+    top_sectors: List[Dict]
+    stocks_per_sector: int = 3
+
 @router.post("/recommend-from-top-sectors", response_model=StockSelectionResponse, summary="基于TOP5板块的股票推荐")
 async def recommend_stocks_from_top_sectors(
-    top_sectors: List[Dict] = Query(..., description="TOP5板块数据"),
-    stocks_per_sector: int = Query(default=3, ge=1, le=10, description="每个板块推荐股票数")
+    request: TopSectorsStockRequest
 ):
     """
     基于TOP5板块进行智能股票推荐
@@ -470,20 +475,31 @@ async def recommend_stocks_from_top_sectors(
     本接口会接收板块分析的TOP5结果，结合板块评分和个股评分，
     为每个优质板块推荐最佳的投资标的。
     
-    - **top_sectors**: TOP5板块分析结果
-    - **stocks_per_sector**: 每个板块推荐的股票数量
+    Request Body:
+    ```json
+    {
+        "top_sectors": [
+            {
+                "sector_name": "医药生物",
+                "composite_score": 85.2,
+                "investment_logic": "..."
+            }
+        ],
+        "stocks_per_sector": 3
+    }
+    ```
     
     返回综合考虑板块优势和个股特质的股票推荐列表
     """
     try:
         result = await stock_service.select_stocks_from_top_sectors(
-            top_sectors, 
-            stocks_per_sector
+            request.top_sectors, 
+            request.stocks_per_sector
         )
         
         return StockSelectionResponse(
             success=True,
-            message=f"成功基于{len(top_sectors)}个优质板块推荐股票",
+            message=f"成功基于{len(request.top_sectors)}个优质板块推荐股票",
             data=result
         )
     except Exception as e:
