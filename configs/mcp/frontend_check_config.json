@@ -1,0 +1,131 @@
+{
+  "check_points": {
+    "homepage": {
+      "url": "http://localhost:3000",
+      "name": "主页",
+      "checks": [
+        "page_loads",
+        "react_renders", 
+        "no_js_errors",
+        "responsive_design",
+        "basic_navigation"
+      ],
+      "expected_elements": [
+        "#root",
+        "header",
+        "nav"
+      ],
+      "performance_thresholds": {
+        "load_time_ms": 3000,
+        "first_paint_ms": 1500
+      }
+    },
+    "dashboard": {
+      "url": "http://localhost:3000/dashboard",
+      "name": "仪表板",
+      "checks": [
+        "page_loads",
+        "data_loads",
+        "charts_render",
+        "websocket_connects",
+        "real_time_updates"
+      ],
+      "expected_elements": [
+        ".dashboard-container",
+        ".market-overview",
+        ".performance-metrics"
+      ],
+      "api_endpoints": [
+        "http://localhost:8000/health",
+        "http://localhost:8000/api/v1/sectors/"
+      ]
+    },
+    "sector_analysis": {
+      "url": "http://localhost:3000/sector-analysis",
+      "name": "板块分析",
+      "checks": [
+        "page_loads",
+        "api_data_loads",
+        "table_renders",
+        "filtering_works",
+        "export_functions"
+      ],
+      "expected_elements": [
+        ".sector-analysis-container",
+        "table",
+        ".filter-controls"
+      ]
+    },
+    "stock_recommendation": {
+      "url": "http://localhost:3000/stock-recommendation",
+      "name": "股票推荐",
+      "checks": [
+        "page_loads",
+        "recommendation_data_loads",
+        "interactive_elements",
+        "data_visualization"
+      ],
+      "expected_elements": [
+        ".stock-recommendation-container",
+        ".recommendation-card",
+        ".stock-list"
+      ]
+    }
+  },
+  "test_scenarios": [
+    {
+      "name": "complete_user_workflow",
+      "description": "完整用户工作流测试",
+      "steps": [
+        {
+          "action": "navigate",
+          "target": "http://localhost:3000",
+          "description": "访问主页"
+        },
+        {
+          "action": "wait_for_element",
+          "selector": "#root",
+          "timeout": 5000
+        },
+        {
+          "action": "click",
+          "selector": "a[href='/dashboard']",
+          "description": "进入仪表板"
+        },
+        {
+          "action": "wait_for_element",
+          "selector": ".dashboard-container",
+          "timeout": 10000
+        },
+        {
+          "action": "check_no_errors",
+          "description": "确认无JavaScript错误"
+        },
+        {
+          "action": "navigate",
+          "target": "http://localhost:3000/sector-analysis",
+          "description": "进入板块分析"
+        },
+        {
+          "action": "wait_for_element",
+          "selector": "table",
+          "timeout": 10000
+        },
+        {
+          "action": "screenshot",
+          "path": "logs/screenshots/user_workflow_final.png"
+        }
+      ]
+    }
+  ],
+  "global_settings": {
+    "screenshot_on_error": true,
+    "max_wait_time": 30000,
+    "retry_count": 2,
+    "headless": false,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    }
+  }
+}

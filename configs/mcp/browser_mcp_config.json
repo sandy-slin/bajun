@@ -1,0 +1,29 @@
+{
+  "server_type": "browser_mcp",
+  "connection": {
+    "transport": "http",
+    "host": "localhost",
+    "port": 3001,
+    "endpoint": "/mcp"
+  },
+  "capabilities": [
+    "navigate",
+    "screenshot",
+    "click",
+    "type",
+    "evaluate_js",
+    "get_console_logs",
+    "monitor_network",
+    "check_performance"
+  ],
+  "security": {
+    "allowed_domains": [
+      "localhost:3000",
+      "localhost:8000",
+      "127.0.0.1:3000",
+      "127.0.0.1:8000"
+    ],
+    "restrict_file_access": true,
+    "timeout_ms": 30000
+  }
+}

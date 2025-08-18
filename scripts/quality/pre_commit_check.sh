@@ -5,6 +5,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
+# 检查模式：快速模式或完整模式
+QUICK_MODE=${QUICK_MODE:-"auto"}  # auto, true, false
+if [ "$QUICK_MODE" = "auto" ]; then
+    # 自动判断：如果是pre-commit钩子调用，使用快速模式
+    if [ -n "$GIT_AUTHOR_NAME" ] || [ -n "$GIT_EDITOR" ]; then
+        QUICK_MODE="true"
+    else
+        QUICK_MODE="false"
+    fi
+fi
+
+if [ "$QUICK_MODE" = "true" ]; then
+    echo "⚡ 快速检查模式已启用"
+else
+    echo "🔍 完整检查模式"
+fi
+
 # 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -21,7 +38,7 @@ LOG_FILE="logs/pre_commit_check.log"
 mkdir -p logs
 echo "=== Pre-commit Check $(date) ===" > "$LOG_FILE"
 
-# 检查函数
+# 检查函数 - 增强版本，支持macOS timeout处理
 check_step() {
     local step_name="$1"
     local command="$2"
@@ -31,27 +48,38 @@ check_step() {
     echo -e "${YELLOW}检查 [$TOTAL_CHECKS]: $step_name${NC}"
     echo "检查 [$TOTAL_CHECKS]: $step_name - $(date)" >> "$LOG_FILE"
     
-    # 在macOS上使用gtimeout或直接执行（没有timeout可用）
-    if command -v timeout >/dev/null 2>&1; then
-        timeout_cmd="timeout $timeout"
-    elif command -v gtimeout >/dev/null 2>&1; then
-        timeout_cmd="gtimeout $timeout"
-    else
-        timeout_cmd=""  # macOS上没有timeout，直接执行
-    fi
+    # macOS兼容的timeout实现
+    local temp_script="/tmp/precommit_check_$$"
+    echo "$command" > "$temp_script"
+    chmod +x "$temp_script"
     
-    if [ -n "$timeout_cmd" ]; then
-        if $timeout_cmd bash -c "$command" >> "$LOG_FILE" 2>&1; then
-            eval_result=0
-        else
-            eval_result=1
+    # 后台运行命令并获取PID
+    bash "$temp_script" >> "$LOG_FILE" 2>&1 &
+    local cmd_pid=$!
+    
+    # 等待指定时间
+    local count=0
+    while [ $count -lt $timeout ]; do
+        if ! kill -0 $cmd_pid 2>/dev/null; then
+            # 进程已结束
+            wait $cmd_pid
+            local eval_result=$?
+            rm -f "$temp_script"
+            break
         fi
-    else
-        if bash -c "$command" >> "$LOG_FILE" 2>&1; then
-            eval_result=0
-        else
-            eval_result=1
-        fi
+        sleep 1
+        ((count++))
+    done
+    
+    # 如果超时，终止进程
+    if [ $count -ge $timeout ]; then
+        echo "⏰ 命令超时 (${timeout}秒)，终止进程..." >> "$LOG_FILE"
+        kill -TERM $cmd_pid 2>/dev/null
+        sleep 2
+        kill -KILL $cmd_pid 2>/dev/null
+        wait $cmd_pid 2>/dev/null
+        eval_result=124  # timeout退出码
+        rm -f "$temp_script"
     fi
     
     if [ $eval_result -eq 0 ]; then
@@ -129,9 +157,18 @@ if ! scripts/deployment/start_services.sh > logs/startup.log 2>&1; then
     exit 1
 fi
 
-# 等待服务完全启动
-echo "⏳ 等待服务启动完成 (30秒)..."
-sleep 30
+# 智能等待服务启动 (最多30秒)
+echo "⏳ 智能等待服务启动完成..."
+for i in {1..30}; do
+    if curl -s -f http://localhost:8000/health >/dev/null 2>&1 && curl -s -f http://localhost:3000 >/dev/null 2>&1; then
+        echo "✅ 服务已在 ${i} 秒内启动完成"
+        break
+    fi
+    if [ $i -eq 30 ]; then
+        echo "⚠️ 服务启动超时，继续检查..."
+    fi
+    sleep 1
+done
 
 # ==========================================
 # Phase 3: 后端服务检查
@@ -313,9 +350,103 @@ else
 fi
 
 # ==========================================
-# Phase 8: 项目标准规范检查
+# Phase 8: Chrome MCP前端运行效果检查
 # ==========================================
-show_progress 9 10 "项目标准规范检查"
+show_progress 9 11 "Chrome MCP前端运行效果检查"
+
+echo "🌐 执行Chrome MCP前端运行效果检查 (快速模式)..."
+
+# 使用check_step函数进行timeout控制 (60秒超时)
+if [ -x "scripts/quality/mcp/integrated_frontend_mcp_check.sh" ]; then
+    if check_step "Chrome MCP前端检查" "scripts/quality/mcp/integrated_frontend_mcp_check.sh" 60; then
+        echo "✅ Chrome MCP前端检查已通过"
+    else
+        # 检查详细报告
+        LATEST_MCP_REPORT=$(ls -t logs/mcp_checks/integrated_check_*.json 2>/dev/null | head -1)
+        
+        if [ -n "$LATEST_MCP_REPORT" ] && [ -f "$LATEST_MCP_REPORT" ]; then
+            MCP_SUCCESS_RATE=$(python -c "
+import json
+try:
+    with open('$LATEST_MCP_REPORT', 'r') as f:
+        report = json.load(f)
+    rate = report['summary']['success_rate'].replace('%', '')
+    print(rate)
+except:
+    print('0')
+")
+            MCP_FAILED_COUNT=$(python -c "
+import json
+try:
+    with open('$LATEST_MCP_REPORT', 'r') as f:
+        report = json.load(f)
+    print(report['summary']['failed'])
+except:
+    print('1')
+")
+            
+            if [ "$MCP_FAILED_COUNT" -eq 0 ]; then
+                echo -e "${GREEN}✅ Chrome MCP前端检查 - 通过${NC}"
+                echo "✅ PASS: Chrome MCP前端检查" >> "$LOG_FILE"
+            else
+                echo -e "${RED}❌ Chrome MCP前端检查 - 发现运行问题${NC}"
+                echo "❌ FAIL: Chrome MCP前端检查 (${MCP_FAILED_COUNT}个问题, 成功率${MCP_SUCCESS_RATE}%)" >> "$LOG_FILE"
+                ((FAILURES++))
+                echo ""
+                echo "🌐 前端运行问题详情："
+                echo "   成功率: ${MCP_SUCCESS_RATE}%"
+                echo "   问题数量: ${MCP_FAILED_COUNT}"
+                
+                # 显示具体问题
+                python -c "
+import json
+try:
+    with open('$LATEST_MCP_REPORT', 'r') as f:
+        report = json.load(f)
+    
+    if 'results' in report and isinstance(report['results'], list):
+        for result in report['results']:
+            if result.get('status') == 'FAIL':
+                print(f'      📄 {result.get(\"page\", \"未知页面\")}: {len(result.get(\"issues\", []))}个问题')
+                for issue in result.get('issues', [])[:2]:
+                    print(f'         - {issue}')
+    
+    if 'recommendations' in report:
+        print('')
+        print('   💡 修复建议:')
+        for rec in report['recommendations'][:3]:
+            print(f'      - {rec}')
+except Exception as e:
+    print(f'      无法解析MCP检查报告: {e}')
+"
+                echo ""
+                echo "🔧 快速修复指南:"
+                echo "   1. 查看详细报告: cat $LATEST_MCP_REPORT"
+                echo "   2. 检查前端服务: curl http://localhost:3000"
+                echo "   3. 检查后端服务: curl http://localhost:8000/health"
+                echo "   4. 重启服务: scripts/deployment/start_services.sh"
+            fi
+        else
+            echo -e "${RED}❌ Chrome MCP前端检查 - 无法生成报告${NC}"
+            echo "❌ FAIL: Chrome MCP前端检查 (无法生成报告)" >> "$LOG_FILE"
+            ((FAILURES++))
+            echo ""
+            echo "🔧 诊断建议:"
+            echo "   1. 检查MCP服务: scripts/setup/setup_chrome_mcp.sh"
+            echo "   2. 检查服务状态: curl http://localhost:3000 && curl http://localhost:8000/health"
+            echo "   3. 查看详细日志: cat logs/mcp_frontend_check_full.log"
+        fi
+    fi
+else
+    echo -e "${YELLOW}⚠️ Chrome MCP检查脚本不可用${NC}"
+    echo "💡 安装建议: scripts/setup/setup_chrome_mcp.sh"
+    echo "ℹ️ INFO: Chrome MCP检查跳过 (脚本不可用)" >> "$LOG_FILE"
+fi
+
+# ==========================================
+# Phase 9: 项目标准规范检查
+# ==========================================
+show_progress 10 11 "项目标准规范检查"
 
 echo "📁 执行项目标准规范检查..."
 if [ -x "scripts/quality/check_project_standards.sh" ]; then
@@ -341,17 +472,20 @@ else
 fi
 
 # ==========================================
-# Phase 9: 性能基准检查 (可选)
+# Phase 10: 性能基准检查 (可选)
 # ==========================================
-show_progress 10 10 "性能基准检查"
+show_progress 11 11 "性能基准检查"
 
-# 如果修改了核心算法文件，则进行性能检查
-if git diff --cached --name-only | grep -q -E '(sector_engine|stock_engine|algorithm)'; then
+# 性能检查（快速模式下跳过）
+if [ "$QUICK_MODE" = "true" ]; then
+    echo "⚡ 快速模式：跳过性能基准检查"
+elif git diff --cached --name-only | grep -q -E '(sector_engine|stock_engine|algorithm)'; then
     echo "🔍 检测到算法相关修改，执行性能基准测试..."
-    
-    # 这里可以添加性能测试逻辑
-    # check_step "算法性能基准测试" "./check_performance.sh"
-    echo "ℹ️ 性能基准测试已跳过 (需要实现具体测试逻辑)"
+    if [ -x "scripts/quality/check_performance.sh" ]; then
+        check_step "算法性能基准测试" "scripts/quality/check_performance.sh" 120
+    else
+        echo "ℹ️ 性能测试脚本不存在，跳过"
+    fi
 else
     echo "ℹ️ 未检测到算法修改，跳过性能基准检查"
 fi

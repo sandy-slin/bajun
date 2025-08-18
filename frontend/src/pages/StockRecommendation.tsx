@@ -439,7 +439,7 @@ const StockRecommendation: React.FC = () => {
                       <span>PB: {stock.pb_ratio}</span>
                       <span>ROE: {stock.roe}%</span>
                       <span>
-                        <Tag color={getRiskLevelColor(stock.risk_assessment.level)} size="small">
+                        <Tag color={getRiskLevelColor(stock.risk_assessment.level)}>
                           {stock.risk_assessment.level.includes('low') ? '低风险' : 
                            stock.risk_assessment.level.includes('medium') ? '中风险' : '高风险'}
                         </Tag>
@@ -450,7 +450,7 @@ const StockRecommendation: React.FC = () => {
                     <div style={{ marginTop: 8 }}>
                       <Text strong style={{ fontSize: '12px' }}>技术信号: </Text>
                       {stock.technical_signals.slice(0, 2).map((signal, idx) => (
-                        <Tag key={idx} size="small" style={{ marginRight: 4 }}>
+                        <Tag key={idx} style={{ marginRight: 4 }}>
                           {signal}
                         </Tag>
                       ))}
@@ -474,7 +474,7 @@ const StockRecommendation: React.FC = () => {
                     {Object.entries(stockRecommendations.portfolio_summary.sector_distribution).map(([sector, count]) => (
                       <div key={sector} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                         <Text>{sector}</Text>
-                        <Tag color="blue">{count}只</Tag>
+                        <Tag color="blue">{`${count}只`}</Tag>
                       </div>
                     ))}
                   </Col>

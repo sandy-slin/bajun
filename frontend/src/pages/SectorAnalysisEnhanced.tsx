@@ -313,7 +313,7 @@ const SectorAnalysisEnhanced: React.FC = () => {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                               <Title level={5} style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
-                                {index < 5 && <Tag color="blue" size="small">TOP{index + 1}</Tag>}
+                                {index < 5 && <Tag color="blue">TOP{index + 1}</Tag>}
                                 {sector.sector_name}
                               </Title>
                               <Text type="secondary" style={{ fontSize: '12px' }}>综合评分: {sector.composite_score}分</Text>
