@@ -195,69 +195,121 @@ else
 fi
 
 # ==========================================
-# Phase 7: 前端UI设计检查
+# Phase 7: 前端UI设计和TypeScript错误检查
 # ==========================================
-show_progress 8 10 "前端UI设计检查"
+show_progress 8 10 "前端UI设计和TypeScript错误检查"
 
-echo "🎨 执行前端UI设计检查..."
-if [ -x "scripts/quality/frontend_ui_check.sh" ]; then
+echo "🎨 执行统一前端检查 (TypeScript + UI设计)..."
+if [ -x "scripts/quality/unified_frontend_check.sh" ]; then
+    if scripts/quality/unified_frontend_check.sh > logs/unified_frontend_check_full.log 2>&1; then
+        echo -e "${GREEN}✅ 前端检查 (TypeScript + UI) - 通过${NC}"
+        echo "✅ PASS: 前端检查 (TypeScript + UI)" >> "$LOG_FILE"
+    else
+        # 检查详细报告
+        if [ -f "logs/unified_frontend_check_report.json" ]; then
+            # 提取TypeScript错误信息
+            TS_ERROR_COUNT=$(python -c "
+import json
+try:
+    with open('logs/unified_frontend_check_report.json', 'r') as f:
+        report = json.load(f)
+    print(report['checks']['typescript_compilation']['error_count'])
+except:
+    print('0')
+")
+            TS_WARNING_COUNT=$(python -c "
+import json
+try:
+    with open('logs/unified_frontend_check_report.json', 'r') as f:
+        report = json.load(f)
+    print(report['checks']['typescript_compilation']['warning_count'])
+except:
+    print('0')
+")
+            OVERALL_STATUS=$(python -c "
+import json
+try:
+    with open('logs/unified_frontend_check_report.json', 'r') as f:
+        report = json.load(f)
+    print(report['overall_status'])
+except:
+    print('UNKNOWN')
+")
+            OVERALL_REASON=$(python -c "
+import json
+try:
+    with open('logs/unified_frontend_check_report.json', 'r') as f:
+        report = json.load(f)
+    print(report['overall_reason'])
+except:
+    print('无法读取错误原因')
+")
+            
+            if [ "$OVERALL_STATUS" = "PASS" ]; then
+                echo -e "${GREEN}✅ 前端检查 (TypeScript + UI) - 通过${NC}"
+                echo "✅ PASS: 前端检查 (TypeScript + UI)" >> "$LOG_FILE"
+            elif [ "$TS_ERROR_COUNT" -gt 0 ]; then
+                echo -e "${RED}❌ 前端检查失败 - TypeScript编译错误${NC}"
+                echo "❌ FAIL: 前端检查 (${TS_ERROR_COUNT}个TypeScript错误, ${TS_WARNING_COUNT}个警告)" >> "$LOG_FILE"
+                ((FAILURES++))
+                echo ""
+                echo "🚨 TypeScript编译问题详情："
+                echo "   原因: $OVERALL_REASON"
+                echo "   错误数量: $TS_ERROR_COUNT"
+                echo "   警告数量: $TS_WARNING_COUNT"
+                
+                # 显示具体错误类型和修复建议
+                if [ -f "logs/typescript_error_analysis.json" ]; then
+                    echo "   错误类型分布:"
+                    python -c "
+import json
+try:
+    with open('logs/typescript_error_analysis.json', 'r') as f:
+        data = json.load(f)
+    for error_type, count in data['errors_by_type'].items():
+        print(f'      {error_type}: {count}个')
+    print('')
+    print('   💡 修复建议:')
+    for suggestion in data['fix_priority'][:3]:
+        print(f'      - {suggestion}')
+    print(f'   ⏱️ 预估修复时间: {data[\"estimated_fix_time\"]}')
+except Exception as e:
+    print('      无法读取详细错误分析')
+"
+                fi
+                echo ""
+                echo "🔧 快速修复指南:"
+                echo "   1. 查看详细分析: cat logs/typescript_error_analysis.json"
+                echo "   2. 运行TypeScript分析器: python scripts/quality/typescript_error_analyzer.py"
+                echo "   3. 使用IDE的TypeScript错误检查获得实时反馈"
+            else
+                echo -e "${RED}❌ 前端检查失败 - 页面渲染问题${NC}"
+                echo "❌ FAIL: 前端检查 (页面渲染问题)" >> "$LOG_FILE"
+                ((FAILURES++))
+                echo ""
+                echo "🔍 页面渲染问题详情："
+                echo "   原因: $OVERALL_REASON"
+                echo "   建议检查浏览器控制台错误和React组件渲染状态"
+            fi
+        else
+            echo -e "${RED}❌ 前端检查失败 - 无法生成检查报告${NC}"
+            echo "❌ FAIL: 前端检查 (无法生成报告)" >> "$LOG_FILE"
+            ((FAILURES++))
+        fi
+    fi
+elif [ -x "scripts/quality/frontend_ui_check.sh" ]; then
+    # 回退到原有的UI检查
+    echo "⚠️ 统一前端检查不可用，使用传统UI检查..."
     if scripts/quality/frontend_ui_check.sh > logs/frontend_ui_check_full.log 2>&1; then
         echo -e "${GREEN}✅ 前端UI设计检查 - 通过${NC}"
         echo "✅ PASS: 前端UI设计检查" >> "$LOG_FILE"
     else
-        # 检查详细报告
-        if [ -f "logs/frontend_ui_check_report.json" ]; then
-            ERROR_COUNT=$(python -c "
-import json
-try:
-    with open('logs/frontend_ui_check_report.json', 'r') as f:
-        report = json.load(f)
-    print(report['summary']['error_count'])
-except:
-    print('0')
-")
-            WARNING_COUNT=$(python -c "
-import json
-try:
-    with open('logs/frontend_ui_check_report.json', 'r') as f:
-        report = json.load(f)
-    print(report['summary']['warning_count'])
-except:
-    print('0')
-")
-            
-            if [ "$ERROR_COUNT" -eq 0 ]; then
-                echo -e "${YELLOW}⚠️ 前端UI设计检查 - 有警告但通过${NC}"
-                echo "⚠️ WARNING: 前端UI设计检查 (有${WARNING_COUNT}个警告)" >> "$LOG_FILE"
-            else
-                echo -e "${RED}❌ 前端UI设计检查 - 失败${NC}"
-                echo "❌ FAIL: 前端UI设计检查 (${ERROR_COUNT}个错误, ${WARNING_COUNT}个警告)" >> "$LOG_FILE"
-                ((FAILURES++))
-                echo ""
-                echo "🎨 前端UI问题详情："
-                # 显示报告摘要
-                python -c "
-import json
-try:
-    with open('logs/frontend_ui_check_report.json', 'r') as f:
-        report = json.load(f)
-    summary = report['summary']
-    print('   可访问性评分: ' + summary['avg_accessibility_score'])
-    print('   性能评分: ' + summary['avg_performance_score'])
-    print('   加载时间: ' + summary['avg_load_time'])
-    print('   总问题数: ' + str(summary['total_issues']))
-except:
-    print('   无法解析UI检查报告')
-"
-            fi
-        else
-            echo -e "${RED}❌ 前端UI设计检查 - 检查失败${NC}"
-            echo "❌ FAIL: 前端UI设计检查 (无法生成报告)" >> "$LOG_FILE"
-            ((FAILURES++))
-        fi
+        echo -e "${RED}❌ 前端UI设计检查 - 失败${NC}"
+        echo "❌ FAIL: 前端UI设计检查" >> "$LOG_FILE"
+        ((FAILURES++))
     fi
 else
-    echo -e "${YELLOW}⚠️ 前端UI检查脚本不存在，跳过检查${NC}"
+    echo -e "${YELLOW}⚠️ 前端检查脚本不存在，跳过检查${NC}"
 fi
 
 # ==========================================

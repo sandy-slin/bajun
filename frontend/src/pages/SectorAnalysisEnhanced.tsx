@@ -378,7 +378,7 @@ const SectorAnalysisEnhanced: React.FC = () => {
                       <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ff4d4f' }}>
                         {sectorData.market_overview.score_distribution.poor.count}
                       </div>
-                      <div>较差板块 (<50分)</div>
+                      <div>较差板块 (&lt;50分)</div>
                       <div style={{ fontSize: '12px', color: '#666' }}>
                         {sectorData.market_overview.score_distribution.poor.percentage}%
                       </div>
