@@ -19,7 +19,16 @@ import uvicorn
 
 # 项目模块导入
 import sys
-sys.path.append(str(Path(__file__).parent.parent.parent))
+from pathlib import Path
+
+# Add project paths if not already set by environment
+project_root = Path(__file__).parent.parent.parent.resolve()
+if str(project_root) not in sys.path:
+    sys.path.append(str(project_root))
+if str(project_root / 'tests' / 'functional') not in sys.path:
+    sys.path.append(str(project_root / 'tests' / 'functional'))
+if str(project_root / 'src' / 'analysis') not in sys.path:
+    sys.path.append(str(project_root / 'src' / 'analysis'))
 
 from src.api.models import *
 from src.api.routes import sector_router, stock_router, portfolio_router, trading_router

@@ -1,0 +1,227 @@
+# UI Design Validation Framework Schema
+# 用于定义UI组件检查规则的YAML结构
+
+validation_config:
+  name: "UI Design Validation Framework"
+  version: "1.0.0"
+  description: "基于YAML的UI设计符合性检查框架"
+  
+# 全局设计规范
+design_system:
+  colors:
+    primary: "#1890ff"
+    secondary: "#722ed1" 
+    success: "#52c41a"
+    warning: "#faad14"
+    error: "#f5222d"
+    text_primary: "#262626"
+    text_secondary: "#595959"
+    background: "#ffffff"
+    border: "#d9d9d9"
+    
+  typography:
+    font_family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+    font_sizes:
+      xs: "12px"
+      sm: "14px" 
+      md: "16px"
+      lg: "18px"
+      xl: "20px"
+      xxl: "24px"
+    font_weights:
+      normal: 400
+      medium: 500
+      semibold: 600
+      bold: 700
+      
+  spacing:
+    xs: "4px"
+    sm: "8px"
+    md: "16px"
+    lg: "24px"
+    xl: "32px"
+    xxl: "48px"
+    
+  breakpoints:
+    mobile: "576px"
+    tablet: "768px"
+    desktop: "992px"
+    large: "1200px"
+
+# 组件级别检查规则
+component_rules:
+  # 按钮组件检查规则
+  button:
+    required_props:
+      - type
+      - size
+    
+    style_rules:
+      min_height: "32px"
+      border_radius: "6px"
+      font_weight: 400
+      
+    accessibility:
+      - name: "button_contrast"
+        rule: "contrast_ratio >= 4.5"
+        description: "按钮文字与背景对比度必须≥4.5:1"
+      - name: "button_focus"
+        rule: "has_focus_indicator"
+        description: "按钮必须有清晰的焦点指示器"
+        
+    variants:
+      primary:
+        background_color: "colors.primary"
+        text_color: "#ffffff"
+        border: "none"
+      secondary:
+        background_color: "transparent"
+        text_color: "colors.primary"
+        border: "1px solid colors.primary"
+      danger:
+        background_color: "colors.error"
+        text_color: "#ffffff"
+        border: "none"
+        
+  # 表单输入组件
+  input:
+    required_props:
+      - placeholder
+      - type
+      
+    style_rules:
+      min_height: "40px"
+      border_radius: "6px"
+      border_width: "1px"
+      padding: "8px 12px"
+      
+    validation:
+      - name: "input_label"
+        rule: "has_associated_label"
+        description: "输入框必须有关联的标签"
+      - name: "error_state"
+        rule: "has_error_styling"
+        description: "错误状态必须有明确的视觉反馈"
+        
+    states:
+      default:
+        border_color: "colors.border"
+        background_color: "colors.background"
+      focus:
+        border_color: "colors.primary"
+        box_shadow: "0 0 0 2px rgba(24, 144, 255, 0.2)"
+      error:
+        border_color: "colors.error"
+        background_color: "#fff2f0"
+      disabled:
+        background_color: "#f5f5f5"
+        color: "#00000040"
+        cursor: "not-allowed"
+
+# 布局检查规则
+layout_rules:
+  grid:
+    max_columns: 24
+    gutter: "16px"
+    margin: "24px"
+    
+  responsive:
+    - breakpoint: "mobile"
+      rules:
+        - "font_size <= typography.font_sizes.md"
+        - "padding <= spacing.md"
+        - "margin <= spacing.md"
+    - breakpoint: "tablet"
+      rules:
+        - "max_width <= 768px"
+    - breakpoint: "desktop"
+      rules:
+        - "max_width <= 1200px"
+
+# 页面级别检查规则
+page_rules:
+  navigation:
+    - name: "nav_accessibility"
+      rule: "has_skip_link"
+      description: "页面必须提供跳转到主内容的链接"
+    - name: "nav_hierarchy"
+      rule: "heading_hierarchy_valid"
+      description: "标题层级必须符合语义化要求"
+      
+  performance:
+    - name: "image_optimization"
+      rule: "images_have_alt_text"
+      description: "所有图片必须有alt属性"
+    - name: "loading_states"
+      rule: "has_loading_indicators"
+      description: "异步操作必须有加载状态指示"
+
+# 特定业务规则（针对交易平台）
+business_rules:
+  trading_components:
+    stock_card:
+      required_fields:
+        - stock_code
+        - stock_name
+        - current_price
+        - price_change
+        - change_percentage
+      
+      color_coding:
+        positive_change: "colors.success"
+        negative_change: "colors.error"
+        no_change: "colors.text_secondary"
+        
+    portfolio_summary:
+      required_metrics:
+        - total_value
+        - daily_pnl
+        - total_return
+      
+      layout:
+        max_items_per_row: 4
+        spacing: "spacing.lg"
+        
+    risk_indicators:
+      warning_threshold: 0.05  # 5%
+      danger_threshold: 0.10   # 10%
+      
+      visual_rules:
+        - "warning_color = colors.warning when risk > warning_threshold"
+        - "danger_color = colors.error when risk > danger_threshold"
+
+# 检查严重程度定义
+severity_levels:
+  error:
+    description: "严重问题，必须修复"
+    examples:
+      - "可访问性违规"
+      - "核心功能缺失"
+      - "设计系统违规"
+      
+  warning:
+    description: "建议修复的问题"
+    examples:
+      - "性能优化建议"
+      - "用户体验改进"
+      - "一致性问题"
+      
+  info:
+    description: "信息性提示"
+    examples:
+      - "最佳实践建议"
+      - "优化机会"
+
+# 检查报告格式
+report_format:
+  output_types:
+    - json
+    - html
+    - markdown
+    
+  sections:
+    - summary
+    - component_analysis
+    - accessibility_audit
+    - performance_metrics
+    - recommendations

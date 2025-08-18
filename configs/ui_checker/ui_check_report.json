@@ -1,0 +1,361 @@
+{
+  "summary": {
+    "total_checks": 17,
+    "passed_checks": 4,
+    "failed_checks": 13,
+    "error_count": 7,
+    "warning_count": 6,
+    "info_count": 0,
+    "success_rate": "23.5%"
+  },
+  "results_by_severity": {
+    "errors": [
+      {
+        "name": "invalid_format_stock_code",
+        "passed": false,
+        "severity": "error",
+        "message": "stock_code 格式不正确，应为6位数字",
+        "component": "bad_stock_card",
+        "rule": "structure_requirements.format",
+        "expected": "6位数字",
+        "actual": "1",
+        "suggestion": ""
+      },
+      {
+        "name": "price_color_logic",
+        "passed": false,
+        "severity": "error",
+        "message": "验证规则失败: if price_change > 0:\n  color = colors.success\nelif price_change < 0:\n  color = colors.error\nelse:\n  color = colors.text_secondary\n",
+        "component": "bad_stock_card",
+        "rule": "validation_rules",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "quantity_validation",
+        "passed": false,
+        "severity": "error",
+        "message": "股票数量必须是100的整数倍",
+        "component": "trading_panel",
+        "rule": "validation_rules",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "price_range_check",
+        "passed": false,
+        "severity": "error",
+        "message": "价格超出当日涨跌停限制",
+        "component": "trading_panel",
+        "rule": "validation_rules",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "balance_check",
+        "passed": false,
+        "severity": "error",
+        "message": "账户余额不足",
+        "component": "trading_panel",
+        "rule": "validation_rules",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "missing_required_component_portfolio_summary",
+        "passed": false,
+        "severity": "error",
+        "message": "页面缺少必需组件: portfolio_summary",
+        "component": "page",
+        "rule": "content_requirements",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "missing_required_component_quick_actions",
+        "passed": false,
+        "severity": "error",
+        "message": "页面缺少必需组件: quick_actions",
+        "component": "page",
+        "rule": "content_requirements",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      }
+    ],
+    "warnings": [
+      {
+        "name": "color_mismatch_border",
+        "passed": false,
+        "severity": "warning",
+        "message": "颜色 border 不符合设计系统",
+        "component": "good_stock_card",
+        "rule": "visual_requirements.colors",
+        "expected": "#d9d9d9",
+        "actual": "1px solid #d9d9d9",
+        "suggestion": "使用设计系统中的颜色: colors.border"
+      },
+      {
+        "name": "data_freshness",
+        "passed": false,
+        "severity": "warning",
+        "message": "验证规则失败: data_timestamp <= 5_minutes_ago",
+        "component": "good_stock_card",
+        "rule": "validation_rules",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "data_freshness",
+        "passed": false,
+        "severity": "warning",
+        "message": "验证规则失败: data_timestamp <= 5_minutes_ago",
+        "component": "bad_stock_card",
+        "rule": "validation_rules",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "missing_breakpoint_576px",
+        "passed": false,
+        "severity": "warning",
+        "message": "缺少响应式断点: 576px",
+        "component": "page",
+        "rule": "layout_requirements.responsive_breakpoints",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "missing_breakpoint_992px",
+        "passed": false,
+        "severity": "warning",
+        "message": "缺少响应式断点: 992px",
+        "component": "page",
+        "rule": "layout_requirements.responsive_breakpoints",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "missing_breakpoint_1200px",
+        "passed": false,
+        "severity": "warning",
+        "message": "缺少响应式断点: 1200px",
+        "component": "page",
+        "rule": "layout_requirements.responsive_breakpoints",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      }
+    ],
+    "infos": []
+  },
+  "results_by_component": {
+    "good_stock_card": [
+      {
+        "name": "color_mismatch_border",
+        "passed": false,
+        "severity": "warning",
+        "message": "颜色 border 不符合设计系统",
+        "component": "good_stock_card",
+        "rule": "visual_requirements.colors",
+        "expected": "#d9d9d9",
+        "actual": "1px solid #d9d9d9",
+        "suggestion": "使用设计系统中的颜色: colors.border"
+      },
+      {
+        "name": "price_color_logic",
+        "passed": true,
+        "severity": "error",
+        "message": "验证规则失败: if price_change > 0:\n  color = colors.success\nelif price_change < 0:\n  color = colors.error\nelse:\n  color = colors.text_secondary\n",
+        "component": "good_stock_card",
+        "rule": "validation_rules",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "data_freshness",
+        "passed": false,
+        "severity": "warning",
+        "message": "验证规则失败: data_timestamp <= 5_minutes_ago",
+        "component": "good_stock_card",
+        "rule": "validation_rules",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      }
+    ],
+    "bad_stock_card": [
+      {
+        "name": "invalid_format_stock_code",
+        "passed": false,
+        "severity": "error",
+        "message": "stock_code 格式不正确，应为6位数字",
+        "component": "bad_stock_card",
+        "rule": "structure_requirements.format",
+        "expected": "6位数字",
+        "actual": "1",
+        "suggestion": ""
+      },
+      {
+        "name": "price_color_logic",
+        "passed": false,
+        "severity": "error",
+        "message": "验证规则失败: if price_change > 0:\n  color = colors.success\nelif price_change < 0:\n  color = colors.error\nelse:\n  color = colors.text_secondary\n",
+        "component": "bad_stock_card",
+        "rule": "validation_rules",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "data_freshness",
+        "passed": false,
+        "severity": "warning",
+        "message": "验证规则失败: data_timestamp <= 5_minutes_ago",
+        "component": "bad_stock_card",
+        "rule": "validation_rules",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      }
+    ],
+    "trading_panel": [
+      {
+        "name": "quantity_validation",
+        "passed": false,
+        "severity": "error",
+        "message": "股票数量必须是100的整数倍",
+        "component": "trading_panel",
+        "rule": "validation_rules",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "price_range_check",
+        "passed": false,
+        "severity": "error",
+        "message": "价格超出当日涨跌停限制",
+        "component": "trading_panel",
+        "rule": "validation_rules",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "balance_check",
+        "passed": false,
+        "severity": "error",
+        "message": "账户余额不足",
+        "component": "trading_panel",
+        "rule": "validation_rules",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      }
+    ],
+    "confirmation_modal": [
+      {
+        "name": "focus_management",
+        "passed": true,
+        "severity": "error",
+        "message": "",
+        "component": "confirmation_modal",
+        "rule": "accessibility_requirements",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "escape_key",
+        "passed": true,
+        "severity": "error",
+        "message": "",
+        "component": "confirmation_modal",
+        "rule": "accessibility_requirements",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "aria_modal",
+        "passed": true,
+        "severity": "error",
+        "message": "",
+        "component": "confirmation_modal",
+        "rule": "accessibility_requirements",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      }
+    ],
+    "page": [
+      {
+        "name": "missing_breakpoint_576px",
+        "passed": false,
+        "severity": "warning",
+        "message": "缺少响应式断点: 576px",
+        "component": "page",
+        "rule": "layout_requirements.responsive_breakpoints",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "missing_breakpoint_992px",
+        "passed": false,
+        "severity": "warning",
+        "message": "缺少响应式断点: 992px",
+        "component": "page",
+        "rule": "layout_requirements.responsive_breakpoints",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "missing_breakpoint_1200px",
+        "passed": false,
+        "severity": "warning",
+        "message": "缺少响应式断点: 1200px",
+        "component": "page",
+        "rule": "layout_requirements.responsive_breakpoints",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "missing_required_component_portfolio_summary",
+        "passed": false,
+        "severity": "error",
+        "message": "页面缺少必需组件: portfolio_summary",
+        "component": "page",
+        "rule": "content_requirements",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      },
+      {
+        "name": "missing_required_component_quick_actions",
+        "passed": false,
+        "severity": "error",
+        "message": "页面缺少必需组件: quick_actions",
+        "component": "page",
+        "rule": "content_requirements",
+        "expected": null,
+        "actual": null,
+        "suggestion": ""
+      }
+    ]
+  },
+  "timestamp": "2025-08-18T10:36:08.844011"
+}

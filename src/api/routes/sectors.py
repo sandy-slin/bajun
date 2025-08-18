@@ -12,6 +12,9 @@ import asyncio
 from datetime import datetime
 
 from ..models import *
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'tests', 'functional'))
 from simple_performance_test import SimplePerformanceBaseline
 
 logger = logging.getLogger(__name__)

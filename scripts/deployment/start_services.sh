@@ -5,13 +5,14 @@
 
 set -e  # 遇到错误立即退出
 
-# 获取脚本所在目录的绝对路径
+# 获取脚本所在目录的绝对路径，然后切换到项目根目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$PROJECT_ROOT"
 
 echo "🚀 启动A股智能交易决策平台..."
 echo "======================================================"
-echo "📍 工作目录: $SCRIPT_DIR"
+echo "📍 项目根目录: $PROJECT_ROOT"
 
 # 1. 检查前置条件
 echo "🔍 检查前置条件..."
@@ -62,7 +63,7 @@ fi
 echo ""
 echo "🔧 启动后端服务 (端口8000)..."
 source venv/bin/activate
-export PYTHONPATH="$SCRIPT_DIR:$PYTHONPATH"
+export PYTHONPATH="$PROJECT_ROOT:$PROJECT_ROOT/tests/functional:$PROJECT_ROOT/src/analysis:$PYTHONPATH"
 
 cd src/api
 nohup python main.py > ../../logs/backend.log 2>&1 &

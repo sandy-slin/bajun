@@ -4,9 +4,10 @@
 
 echo "🛑 停止A股智能交易决策平台服务..."
 
-# 获取脚本所在目录的绝对路径
+# 获取脚本所在目录的绝对路径，然后切换到项目根目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$PROJECT_ROOT"
 
 # 1. 从PID文件停止服务
 if [ -f "logs/backend.pid" ]; then

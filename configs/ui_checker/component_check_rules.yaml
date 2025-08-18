@@ -1,0 +1,298 @@
+# 具体组件检查规则定义
+# 定义每个UI组件的详细检查标准
+
+# 交易平台特定组件检查规则
+trading_platform_components:
+  
+  # 股票卡片组件
+  stock_card:
+    component_name: "StockCard"
+    category: "data_display"
+    
+    structure_requirements:
+      required_elements:
+        stock_code: 
+          type: "text"
+          format: "6位数字"
+          position: "top_left"
+        stock_name:
+          type: "text" 
+          max_length: 10
+          position: "top_right"
+        current_price:
+          type: "number"
+          precision: 2
+          position: "center"
+        price_change:
+          type: "number"
+          precision: 2
+          position: "bottom_left"
+        change_percentage:
+          type: "percentage"
+          precision: 2
+          position: "bottom_right"
+            
+    visual_requirements:
+      dimensions:
+        min_width: "200px"
+        max_width: "300px"
+        min_height: "120px"
+        aspect_ratio: "3:2"
+        
+      colors:
+        background: "colors.background"
+        border: "colors.border"
+        text_primary: "colors.text_primary"
+        text_secondary: "colors.text_secondary"
+        price_up: "colors.success"
+        price_down: "colors.error"
+        price_neutral: "colors.text_secondary"
+        
+      typography:
+        stock_code:
+          font_size: "typography.font_sizes.sm"
+          font_weight: "typography.font_weights.medium"
+        stock_name:
+          font_size: "typography.font_sizes.md"
+          font_weight: "typography.font_weights.normal"
+        price:
+          font_size: "typography.font_sizes.lg"
+          font_weight: "typography.font_weights.semibold"
+        change:
+          font_size: "typography.font_sizes.sm"
+          font_weight: "typography.font_weights.normal"
+          
+    interaction_rules:
+      hover:
+        background_color: "#f5f5f5"
+        cursor: "pointer"
+        elevation: "0 2px 8px rgba(0,0,0,0.1)"
+      click:
+        action: "navigate_to_detail"
+        feedback: "visual_feedback_required"
+        
+    validation_rules:
+      - name: "price_color_logic"
+        rule: |
+          if price_change > 0:
+            color = colors.success
+          elif price_change < 0:
+            color = colors.error
+          else:
+            color = colors.text_secondary
+        severity: "error"
+        
+      - name: "data_freshness"
+        rule: "data_timestamp <= 5_minutes_ago"
+        severity: "warning"
+        
+  # 投资组合摘要组件
+  portfolio_summary:
+    component_name: "PortfolioSummary"
+    category: "dashboard"
+    
+    structure_requirements:
+      layout: "grid"
+      max_columns: 4
+      required_metrics:
+        - total_value:
+            format: "currency_cny"
+            prominence: "high"
+        - daily_pnl:
+            format: "currency_cny_with_sign"
+            color_coded: true
+        - total_return:
+            format: "percentage_with_sign"
+            color_coded: true
+        - position_count:
+            format: "integer"
+            
+    visual_requirements:
+      card_spacing: "spacing.lg"
+      padding: "spacing.md"
+      border_radius: "6px"
+      
+    accessibility_requirements:
+      - name: "screen_reader_support"
+        rule: "aria_labels_present"
+        description: "所有数值必须有清晰的ARIA标签"
+      - name: "color_independence"
+        rule: "meaning_not_color_only"
+        description: "不能仅依赖颜色传达盈亏信息"
+        
+  # 交易操作面板
+  trading_panel:
+    component_name: "TradingPanel"
+    category: "form"
+    
+    structure_requirements:
+      sections:
+        - stock_selection:
+            input_type: "search_select"
+            validation: "stock_code_format"
+        - operation_type:
+            input_type: "radio_group"
+            options: ["buy", "sell"]
+        - quantity:
+            input_type: "number"
+            min: 100
+            step: 100
+        - price:
+            input_type: "number"
+            precision: 2
+        - order_type:
+            input_type: "select"
+            options: ["market", "limit"]
+            
+    validation_rules:
+      - name: "quantity_validation"
+        rule: "quantity % 100 == 0 and quantity >= 100"
+        message: "股票数量必须是100的整数倍"
+        severity: "error"
+        
+      - name: "price_range_check"
+        rule: "price within daily_limit_range"
+        message: "价格超出当日涨跌停限制"
+        severity: "error"
+        
+      - name: "balance_check"
+        rule: "available_balance >= total_cost"
+        message: "账户余额不足"
+        severity: "error"
+        
+    risk_warnings:
+      - condition: "operation_amount > portfolio_value * 0.2"
+        message: "单笔交易金额超过总资产20%"
+        severity: "warning"
+      - condition: "same_stock_positions > 5"
+        message: "同一股票操作频繁"
+        severity: "info"
+
+# 通用UI组件检查规则
+generic_components:
+  
+  # 数据表格组件
+  data_table:
+    component_name: "DataTable"
+    category: "data_display"
+    
+    structure_requirements:
+      header:
+        required: true
+        sortable: true
+        resizable: false
+      pagination:
+        required_when: "rows > 50"
+        page_size_options: [20, 50, 100]
+      loading_state:
+        required: true
+        skeleton_rows: 5
+        
+    accessibility_requirements:
+      - name: "table_headers"
+        rule: "thead_with_th_elements"
+        severity: "error"
+      - name: "row_navigation"
+        rule: "keyboard_navigation_support"
+        severity: "warning"
+        
+    performance_requirements:
+      - name: "virtual_scrolling"
+        rule: "virtual_scroll_when_rows > 1000"
+        severity: "warning"
+      - name: "column_width_optimization"
+        rule: "fixed_width_for_large_tables"
+        severity: "info"
+        
+  # 模态对话框组件
+  modal:
+    component_name: "Modal"
+    category: "overlay"
+    
+    structure_requirements:
+      backdrop:
+        required: true
+        dismissible: true
+      header:
+        close_button: "required"
+        title: "required"
+      footer:
+        action_buttons: "required"
+        
+    accessibility_requirements:
+      - name: "focus_management"
+        rule: "focus_trapped_in_modal"
+        severity: "error"
+      - name: "escape_key"
+        rule: "closes_on_escape"
+        severity: "error"
+      - name: "aria_modal"
+        rule: "aria_modal_true"
+        severity: "error"
+        
+    visual_requirements:
+      backdrop_color: "rgba(0, 0, 0, 0.45)"
+      max_width: "520px"
+      border_radius: "8px"
+      box_shadow: "0 6px 16px rgba(0, 0, 0, 0.12)"
+
+# 页面级别检查规则
+page_level_checks:
+  
+  # 仪表板页面
+  dashboard_page:
+    page_name: "Dashboard"
+    
+    layout_requirements:
+      grid_system: "24_column"
+      responsive_breakpoints: ["576px", "768px", "992px", "1200px"]
+      
+    content_requirements:
+      - portfolio_summary: "required"
+      - market_overview: "required"
+      - recent_transactions: "optional"
+      - quick_actions: "required"
+      
+    performance_requirements:
+      - name: "initial_load_time"
+        rule: "load_time < 3_seconds"
+        severity: "warning"
+      - name: "data_refresh_interval"
+        rule: "auto_refresh_every_30_seconds"
+        severity: "info"
+        
+  # 股票详情页面
+  stock_detail_page:
+    page_name: "StockDetail"
+    
+    content_requirements:
+      - stock_info: "required"
+      - price_chart: "required"
+      - trading_panel: "required"
+      - news_feed: "optional"
+      
+    navigation_requirements:
+      - name: "breadcrumb_navigation"
+        rule: "breadcrumb_present"
+        severity: "warning"
+      - name: "back_button"
+        rule: "back_navigation_available"
+        severity: "error"
+
+# 检查执行配置
+execution_config:
+  check_order:
+    - structure_requirements
+    - visual_requirements
+    - accessibility_requirements
+    - validation_rules
+    - performance_requirements
+    
+  failure_handling:
+    continue_on_error: true
+    max_errors_per_component: 10
+    
+  reporting:
+    include_passed_checks: false
+    group_by_severity: true
+    include_suggestions: true

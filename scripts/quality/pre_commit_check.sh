@@ -2,7 +2,8 @@
 
 echo "🔍 开始提交前检查..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$PROJECT_ROOT"
 
 # 颜色定义
 RED='\033[0;31m'
@@ -78,11 +79,31 @@ echo "日志文件: $LOG_FILE"
 echo ""
 
 # ==========================================
-# Phase 1: 基础环境检查
+# Phase 1: 严格目录结构检查 (CRITICAL)
 # ==========================================
-show_progress 1 6 "基础环境检查"
+show_progress 1 9 "严格目录结构检查"
 
-check_step "项目目录结构检查" "[ -f 'src/api/main.py' ] && [ -f 'frontend/package.json' ] && [ -f 'start_services.sh' ]"
+echo "📁 执行严格目录结构检查..."
+if [ -x "scripts/quality/strict_structure_check.sh" ]; then
+    if ! scripts/quality/strict_structure_check.sh > logs/structure_check_output.log 2>&1; then
+        echo -e "${RED}💥 严格目录结构检查失败，必须修复！${NC}"
+        echo "📋 结构问题详情："
+        tail -20 logs/structure_check_output.log | sed 's/^/   /'
+        echo ""
+        echo "📝 完整报告: logs/structure_check_output.log"
+        exit 1
+    else
+        echo -e "${GREEN}✅ 严格目录结构检查 - 通过${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠️ 严格结构检查脚本不存在，使用基础检查${NC}"
+    check_step "基础目录结构检查" "[ -f 'src/api/main.py' ] && [ -f 'frontend/package.json' ] && [ -f 'scripts/deployment/start_services.sh' ]"
+fi
+
+# ==========================================
+# Phase 2: 基础环境检查
+# ==========================================
+show_progress 2 9 "基础环境检查"
 
 # Python依赖检查 (可选，因为服务已经能正常运行)
 echo "🗒️ Python依赖检查 (可选)..."
@@ -93,16 +114,16 @@ else
 fi
 
 # ==========================================
-# Phase 2: 服务重启
+# Phase 3: 服务重启
 # ==========================================
-show_progress 2 6 "服务重启检查"
+show_progress 3 9 "服务重启检查"
 
 echo "🛑 停止现有服务..."
-./stop_services.sh >/dev/null 2>&1 || true
+scripts/deployment/stop_services.sh >/dev/null 2>&1 || true
 sleep 3
 
 echo "🚀 启动服务..."
-if ! ./start_services.sh > logs/startup.log 2>&1; then
+if ! scripts/deployment/start_services.sh > logs/startup.log 2>&1; then
     echo -e "${RED}❌ 服务启动失败，查看日志: logs/startup.log${NC}"
     cat logs/startup.log
     exit 1
@@ -115,7 +136,7 @@ sleep 30
 # ==========================================
 # Phase 3: 后端服务检查
 # ==========================================
-show_progress 3 6 "后端服务检查"
+show_progress 4 9 "后端服务检查"
 
 check_step "后端服务健康检查" "curl -f -s http://localhost:8000/health > /dev/null"
 
@@ -126,7 +147,7 @@ check_step "API文档可访问" "curl -f -s http://localhost:8000/docs > /dev/nu
 # ==========================================
 # Phase 4: 核心API功能检查
 # ==========================================
-show_progress 4 6 "核心API功能检查"
+show_progress 5 9 "核心API功能检查"
 
 check_step "板块分析API基础功能" "curl -s http://localhost:8000/api/v1/sectors/ | grep -q '\"success\":true'"
 
@@ -140,7 +161,7 @@ check_step "TOP5板块数据完整性" "RESPONSE=\$(curl -s http://localhost:800
 # ==========================================
 # Phase 5: 前端服务检查
 # ==========================================
-show_progress 5 6 "前端服务检查"
+show_progress 6 9 "前端服务检查"
 
 check_step "前端服务HTTP状态" "curl -f -s -I http://localhost:3000 > /dev/null"
 
@@ -151,7 +172,7 @@ check_step "前端静态资源" "curl -s http://localhost:3000 | grep -q -E '(re
 # ==========================================
 # Phase 6: 代码质量检查
 # ==========================================
-show_progress 6 6 "代码质量检查"
+show_progress 7 9 "代码质量检查"
 
 # 检查是否有Python文件修改
 if git diff --cached --name-only | grep -q '\.py$'; then
@@ -174,10 +195,37 @@ else
 fi
 
 # ==========================================
-# 性能基准检查 (可选)
+# Phase 7: 项目标准规范检查
 # ==========================================
-echo ""
-echo "📈 性能基准检查..."
+show_progress 8 9 "项目标准规范检查"
+
+echo "📁 执行项目标准规范检查..."
+if [ -x "scripts/quality/check_project_standards.sh" ]; then
+    if scripts/quality/check_project_standards.sh > logs/project_standards_output.log 2>&1; then
+        echo -e "${GREEN}✅ 项目标准规范检查 - 通过${NC}"
+        echo "✅ PASS: 项目标准规范检查" >> "$LOG_FILE"
+    else
+        # 检查是否只是警告而非错误
+        if grep -q "项目标准规范检查通过" logs/project_standards_output.log; then
+            echo -e "${YELLOW}⚠️ 项目标准规范检查 - 有建议改进项但通过${NC}"
+            echo "⚠️ WARNING: 项目标准规范检查 (有改进建议)" >> "$LOG_FILE"
+        else
+            echo -e "${RED}❌ 项目标准规范检查 - 失败${NC}"
+            echo "❌ FAIL: 项目标准规范检查" >> "$LOG_FILE"
+            ((FAILURES++))
+            echo ""
+            echo "📋 项目标准问题详情："
+            tail -20 logs/project_standards_output.log | sed 's/^/   /'
+        fi
+    fi
+else
+    echo -e "${YELLOW}⚠️ 项目标准检查脚本不存在，跳过检查${NC}"
+fi
+
+# ==========================================
+# Phase 8: 性能基准检查 (可选)
+# ==========================================
+show_progress 9 9 "性能基准检查"
 
 # 如果修改了核心算法文件，则进行性能检查
 if git diff --cached --name-only | grep -q -E '(sector_engine|stock_engine|algorithm)'; then
@@ -198,34 +246,70 @@ echo "================================================================"
 echo "📊 提交前检查总结:"
 echo "================================================================"
 
+# 统计项目标准检查结果
+STANDARDS_WARNINGS=0
+STANDARDS_STATUS="未检查"
+if [ -f "logs/project_standards_output.log" ]; then
+    if grep -q "项目标准规范检查通过" logs/project_standards_output.log; then
+        STANDARDS_STATUS="通过"
+        STANDARDS_WARNINGS=$(grep -c "WARNING:" logs/project_standards_output.log 2>/dev/null || echo "0")
+    elif grep -q "项目标准规范检查失败" logs/project_standards_output.log; then
+        STANDARDS_STATUS="失败"
+    fi
+fi
+
+echo "总检查项: $TOTAL_CHECKS"
+echo "✅ 功能测试通过: $(( TOTAL_CHECKS - FAILURES ))"
+echo "❌ 功能测试失败: $FAILURES"
+echo "📁 项目标准检查: $STANDARDS_STATUS"
+if [ $STANDARDS_WARNINGS -gt 0 ]; then
+    echo "⚠️ 项目标准建议: $STANDARDS_WARNINGS 项"
+fi
+
 if [ $FAILURES -eq 0 ]; then
-    echo -e "${GREEN}🎉 所有检查通过! ($TOTAL_CHECKS/$TOTAL_CHECKS)${NC}"
-    echo -e "${GREEN}✅ 代码质量合格，可以安全提交。${NC}"
+    echo ""
+    echo -e "${GREEN}🎉 完备迭代体系检查通过!${NC}"
+    echo -e "${GREEN}✅ 功能质量 + 项目标准 双重验证通过${NC}"
+    
+    if [ $STANDARDS_WARNINGS -gt 0 ]; then
+        echo -e "${YELLOW}💡 项目有 $STANDARDS_WARNINGS 项改进建议，建议查看并优化${NC}"
+        echo "📋 详细建议请查看: logs/project_standards_output.log"
+    fi
+    
     echo ""
     echo "🚀 建议的提交命令:"
     echo "   git commit -m \"feat: 您的提交信息\""
     echo ""
-    echo "📝 检查详情请查看: $LOG_FILE"
+    echo "📝 完整检查报告:"
+    echo "   - 功能测试: $LOG_FILE"
+    echo "   - 项目标准: logs/project_standards_output.log"
     
     # 记录成功
-    echo "✅ ALL CHECKS PASSED - $(date)" >> "$LOG_FILE"
+    echo "✅ COMPLETE ITERATIVE SYSTEM CHECK PASSED - $(date)" >> "$LOG_FILE"
     exit 0
 else
-    echo -e "${RED}💥 检查失败: $FAILURES/$TOTAL_CHECKS 项检查未通过${NC}"
-    echo -e "${RED}❌ 请修复所有问题后再提交代码!${NC}"
     echo ""
-    echo "🔍 故障排除:"
-    echo "   1. 查看详细日志: cat $LOG_FILE"
+    echo -e "${RED}💥 完备迭代体系检查失败!${NC}"
+    echo -e "${RED}❌ $FAILURES 项功能检查未通过，需要修复${NC}"
+    echo ""
+    echo "🔧 修复指南:"
+    echo "   1. 功能问题修复: cat $LOG_FILE"
     echo "   2. 检查服务状态: curl http://localhost:8000/health"
     echo "   3. 重新启动服务: ./start_services.sh"
     echo "   4. 检查代码语法: python -m py_compile src/api/main.py"
+    
+    if [ "$STANDARDS_STATUS" = "失败" ]; then
+        echo "   5. 项目标准修复: cat logs/project_standards_output.log"
+    fi
+    
     echo ""
-    echo "📞 如需帮助，请检查:"
+    echo "📞 详细日志查看:"
     echo "   - logs/backend.log (后端日志)"
     echo "   - logs/frontend.log (前端日志)"
     echo "   - logs/startup.log (启动日志)"
+    echo "   - logs/project_standards_output.log (项目标准)"
     
     # 记录失败
-    echo "❌ CHECKS FAILED ($FAILURES/$TOTAL_CHECKS) - $(date)" >> "$LOG_FILE"
+    echo "❌ COMPLETE ITERATIVE SYSTEM CHECK FAILED ($FAILURES/$TOTAL_CHECKS) - $(date)" >> "$LOG_FILE"
     exit 1
 fi
