@@ -195,9 +195,75 @@ else
 fi
 
 # ==========================================
-# Phase 7: 项目标准规范检查
+# Phase 7: 前端UI设计检查
 # ==========================================
-show_progress 8 9 "项目标准规范检查"
+show_progress 8 10 "前端UI设计检查"
+
+echo "🎨 执行前端UI设计检查..."
+if [ -x "scripts/quality/frontend_ui_check.sh" ]; then
+    if scripts/quality/frontend_ui_check.sh > logs/frontend_ui_check_full.log 2>&1; then
+        echo -e "${GREEN}✅ 前端UI设计检查 - 通过${NC}"
+        echo "✅ PASS: 前端UI设计检查" >> "$LOG_FILE"
+    else
+        # 检查详细报告
+        if [ -f "logs/frontend_ui_check_report.json" ]; then
+            ERROR_COUNT=$(python -c "
+import json
+try:
+    with open('logs/frontend_ui_check_report.json', 'r') as f:
+        report = json.load(f)
+    print(report['summary']['error_count'])
+except:
+    print('0')
+")
+            WARNING_COUNT=$(python -c "
+import json
+try:
+    with open('logs/frontend_ui_check_report.json', 'r') as f:
+        report = json.load(f)
+    print(report['summary']['warning_count'])
+except:
+    print('0')
+")
+            
+            if [ "$ERROR_COUNT" -eq 0 ]; then
+                echo -e "${YELLOW}⚠️ 前端UI设计检查 - 有警告但通过${NC}"
+                echo "⚠️ WARNING: 前端UI设计检查 (有${WARNING_COUNT}个警告)" >> "$LOG_FILE"
+            else
+                echo -e "${RED}❌ 前端UI设计检查 - 失败${NC}"
+                echo "❌ FAIL: 前端UI设计检查 (${ERROR_COUNT}个错误, ${WARNING_COUNT}个警告)" >> "$LOG_FILE"
+                ((FAILURES++))
+                echo ""
+                echo "🎨 前端UI问题详情："
+                # 显示报告摘要
+                python -c "
+import json
+try:
+    with open('logs/frontend_ui_check_report.json', 'r') as f:
+        report = json.load(f)
+    summary = report['summary']
+    print('   可访问性评分: ' + summary['avg_accessibility_score'])
+    print('   性能评分: ' + summary['avg_performance_score'])
+    print('   加载时间: ' + summary['avg_load_time'])
+    print('   总问题数: ' + str(summary['total_issues']))
+except:
+    print('   无法解析UI检查报告')
+"
+            fi
+        else
+            echo -e "${RED}❌ 前端UI设计检查 - 检查失败${NC}"
+            echo "❌ FAIL: 前端UI设计检查 (无法生成报告)" >> "$LOG_FILE"
+            ((FAILURES++))
+        fi
+    fi
+else
+    echo -e "${YELLOW}⚠️ 前端UI检查脚本不存在，跳过检查${NC}"
+fi
+
+# ==========================================
+# Phase 8: 项目标准规范检查
+# ==========================================
+show_progress 9 10 "项目标准规范检查"
 
 echo "📁 执行项目标准规范检查..."
 if [ -x "scripts/quality/check_project_standards.sh" ]; then
@@ -223,9 +289,9 @@ else
 fi
 
 # ==========================================
-# Phase 8: 性能基准检查 (可选)
+# Phase 9: 性能基准检查 (可选)
 # ==========================================
-show_progress 9 9 "性能基准检查"
+show_progress 10 10 "性能基准检查"
 
 # 如果修改了核心算法文件，则进行性能检查
 if git diff --cached --name-only | grep -q -E '(sector_engine|stock_engine|algorithm)'; then
