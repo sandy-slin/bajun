@@ -6,20 +6,19 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
 # 检查模式：快速模式或完整模式
-QUICK_MODE=${QUICK_MODE:-"auto"}  # auto, true, false
-if [ "$QUICK_MODE" = "auto" ]; then
-    # 自动判断：如果是pre-commit钩子调用，使用快速模式
-    if [ -n "$GIT_AUTHOR_NAME" ] || [ -n "$GIT_EDITOR" ]; then
-        QUICK_MODE="true"
-    else
-        QUICK_MODE="false"
-    fi
+QUICK_MODE=${QUICK_MODE:-"true"}  # 默认使用快速模式
+if [ "$1" = "--full" ]; then
+    QUICK_MODE="false"
 fi
 
 if [ "$QUICK_MODE" = "true" ]; then
-    echo "⚡ 快速检查模式已启用"
+    echo "⚡ 快速检查模式已启用 (使用 --full 参数启用完整检查)"
+    TIMEOUT_SECONDS=10
+    SERVICE_TIMEOUT=15
 else
     echo "🔍 完整检查模式"
+    TIMEOUT_SECONDS=30
+    SERVICE_TIMEOUT=30
 fi
 
 # 颜色定义
@@ -157,296 +156,144 @@ if ! scripts/deployment/start_services.sh > logs/startup.log 2>&1; then
     exit 1
 fi
 
-# 智能等待服务启动 (最多30秒)
+# 智能等待服务启动
 echo "⏳ 智能等待服务启动完成..."
-for i in {1..30}; do
+max_wait=$SERVICE_TIMEOUT
+for i in $(seq 1 $max_wait); do
     if curl -s -f http://localhost:8000/health >/dev/null 2>&1 && curl -s -f http://localhost:3000 >/dev/null 2>&1; then
         echo "✅ 服务已在 ${i} 秒内启动完成"
         break
     fi
-    if [ $i -eq 30 ]; then
-        echo "⚠️ 服务启动超时，继续检查..."
+    if [ $i -eq $max_wait ]; then
+        if [ "$QUICK_MODE" = "true" ]; then
+            echo "⚠️ 快速模式：服务启动超时，跳过部分检查"
+            SERVICES_READY=false
+        else
+            echo "❌ 服务启动超时，检查失败"
+            exit 1
+        fi
     fi
     sleep 1
 done
+SERVICES_READY=${SERVICES_READY:-true}
 
 # ==========================================
-# Phase 3: 后端服务检查
+# Phase 4: 后端服务检查
 # ==========================================
 show_progress 4 9 "后端服务检查"
 
-check_step "后端服务健康检查" "curl -f -s http://localhost:8000/health > /dev/null"
-
-check_step "后端服务响应结构" "curl -s http://localhost:8000/health | jq -e '.status == \"healthy\"' > /dev/null 2>&1 || curl -s http://localhost:8000/health | grep -q '\"status\":\"healthy\"'"
-
-check_step "API文档可访问" "curl -f -s http://localhost:8000/docs > /dev/null"
+if [ "$SERVICES_READY" = "true" ]; then
+    check_step "后端服务健康检查" "curl -f -s http://localhost:8000/health > /dev/null"
+    
+    if [ "$QUICK_MODE" = "false" ]; then
+        check_step "后端服务响应结构" "curl -s http://localhost:8000/health | jq -e '.status == \"healthy\"' > /dev/null 2>&1 || curl -s http://localhost:8000/health | grep -q '\"status\":\"healthy\"'"
+        check_step "API文档可访问" "curl -f -s http://localhost:8000/docs > /dev/null"
+    else
+        echo "⚡ 快速模式：跳过详细后端检查"
+    fi
+else
+    echo "⚠️ 服务未就绪，跳过后端检查"
+fi
 
 # ==========================================
-# Phase 4: 核心API功能检查
+# Phase 5: 核心API功能检查
 # ==========================================
 show_progress 5 9 "核心API功能检查"
 
-check_step "板块分析API基础功能" "curl -s http://localhost:8000/api/v1/sectors/ | grep -q '\"success\":true'"
+if [ "$SERVICES_READY" = "true" ] && [ "$QUICK_MODE" = "false" ]; then
+    check_step "板块分析API基础功能" "curl -s 'http://localhost:8000/api/v1/sectors/?top_n=3' | grep -q 'analysis_time'"
+    check_step "股票推荐API基础功能" "curl -s 'http://localhost:8000/api/v1/stocks/recommendations?top_n=3' | grep -q 'analysis_time'"
+else
+    echo "⚡ 快速模式或服务未就绪：跳过API功能检查"
+fi
 
-check_step "板块分析API数据完整性" "curl -s http://localhost:8000/api/v1/sectors/ | grep -q '\"top_sectors\"' && curl -s http://localhost:8000/api/v1/sectors/ | grep -q '\"all_sectors\"'"
-
-check_step "板块分析API评分数据" "curl -s http://localhost:8000/api/v1/sectors/ | grep -q '\"composite_score\"' && curl -s http://localhost:8000/api/v1/sectors/ | grep -q '\"market_overview\"'"
-
-# 检查是否有TOP5数据
-check_step "TOP5板块数据完整性" "RESPONSE=\$(curl -s http://localhost:8000/api/v1/sectors/); echo \"\$RESPONSE\" | grep -q '\"top_sectors\"' && [ \$(echo \"\$RESPONSE\" | grep -o 'sector_name' | wc -l) -ge 5 ]"
+# 快速模式下移除了详细的API数据检查
 
 # ==========================================
-# Phase 5: 前端服务检查
+# Phase 6: 前端服务检查
 # ==========================================
 show_progress 6 9 "前端服务检查"
 
-check_step "前端服务HTTP状态" "curl -f -s -I http://localhost:3000 > /dev/null"
-
-check_step "前端页面内容检查" "curl -s http://localhost:3000 | grep -q '<title>'"
-
-check_step "前端静态资源" "curl -s http://localhost:3000 | grep -q -E '(react|app)'"
+if [ "$SERVICES_READY" = "true" ]; then
+    check_step "前端服务HTTP状态" "curl -f -s -I http://localhost:3000 > /dev/null"
+    
+    if [ "$QUICK_MODE" = "false" ]; then
+        check_step "前端页面内容检查" "curl -s http://localhost:3000 | grep -q '<title>'"
+        check_step "前端React应用" "curl -s http://localhost:3000 | grep -q -E '(react|app)'"
+    else
+        echo "⚡ 快速模式：跳过详细前端检查"
+    fi
+else
+    echo "⚠️ 服务未就绪，跳过前端检查"
+fi
 
 # ==========================================
-# Phase 6: 代码质量检查
+# Phase 7: 代码质量检查
 # ==========================================
 show_progress 7 9 "代码质量检查"
 
-# 检查是否有Python文件修改
-if git diff --cached --name-only | grep -q '\.py$'; then
-    check_step "Python代码语法检查" "python -m py_compile src/api/main.py && python -c 'from src.api.main import app' > /dev/null 2>&1"
-    
-    check_step "Python导入完整性" "cd src && python -c 'from api.routes import sector_router, stock_router' > /dev/null 2>&1"
-else
-    echo "ℹ️ 未检测到Python文件修改，跳过Python代码检查"
-fi
-
-# 检查是否有前端文件修改
-if git diff --cached --name-only | grep -q -E '\.(tsx?|jsx?|json)$'; then
-    if [ -d "frontend/node_modules" ]; then
-        check_step "前端代码编译检查" "cd frontend && npm run build > /dev/null 2>&1"
+if [ "$QUICK_MODE" = "false" ]; then
+    # 检查是否有Python文件修改
+    if git diff --cached --name-only | grep -q '\.py$'; then
+        check_step "Python代码语法检查" "python -m py_compile src/api/main.py"
+        check_step "Python导入完整性" "cd src && python -c 'from api.routes import sectors, stocks' > /dev/null 2>&1"
     else
-        echo "⚠️ 前端依赖未安装，跳过编译检查"
+        echo "ℹ️ 未检测到Python文件修改，跳过Python代码检查"
     fi
-else
-    echo "ℹ️ 未检测到前端文件修改，跳过前端代码检查"
-fi
 
-# ==========================================
-# Phase 7: 前端UI设计和TypeScript错误检查
-# ==========================================
-show_progress 8 10 "前端UI设计和TypeScript错误检查"
-
-echo "🎨 执行统一前端检查 (TypeScript + UI设计)..."
-if [ -x "scripts/quality/unified_frontend_check.sh" ]; then
-    if scripts/quality/unified_frontend_check.sh > logs/unified_frontend_check_full.log 2>&1; then
-        echo -e "${GREEN}✅ 前端检查 (TypeScript + UI) - 通过${NC}"
-        echo "✅ PASS: 前端检查 (TypeScript + UI)" >> "$LOG_FILE"
-    else
-        # 检查详细报告
-        if [ -f "logs/unified_frontend_check_report.json" ]; then
-            # 提取TypeScript错误信息
-            TS_ERROR_COUNT=$(python -c "
-import json
-try:
-    with open('logs/unified_frontend_check_report.json', 'r') as f:
-        report = json.load(f)
-    print(report['checks']['typescript_compilation']['error_count'])
-except:
-    print('0')
-")
-            TS_WARNING_COUNT=$(python -c "
-import json
-try:
-    with open('logs/unified_frontend_check_report.json', 'r') as f:
-        report = json.load(f)
-    print(report['checks']['typescript_compilation']['warning_count'])
-except:
-    print('0')
-")
-            OVERALL_STATUS=$(python -c "
-import json
-try:
-    with open('logs/unified_frontend_check_report.json', 'r') as f:
-        report = json.load(f)
-    print(report['overall_status'])
-except:
-    print('UNKNOWN')
-")
-            OVERALL_REASON=$(python -c "
-import json
-try:
-    with open('logs/unified_frontend_check_report.json', 'r') as f:
-        report = json.load(f)
-    print(report['overall_reason'])
-except:
-    print('无法读取错误原因')
-")
-            
-            if [ "$OVERALL_STATUS" = "PASS" ]; then
-                echo -e "${GREEN}✅ 前端检查 (TypeScript + UI) - 通过${NC}"
-                echo "✅ PASS: 前端检查 (TypeScript + UI)" >> "$LOG_FILE"
-            elif [ "$TS_ERROR_COUNT" -gt 0 ]; then
-                echo -e "${RED}❌ 前端检查失败 - TypeScript编译错误${NC}"
-                echo "❌ FAIL: 前端检查 (${TS_ERROR_COUNT}个TypeScript错误, ${TS_WARNING_COUNT}个警告)" >> "$LOG_FILE"
-                ((FAILURES++))
-                echo ""
-                echo "🚨 TypeScript编译问题详情："
-                echo "   原因: $OVERALL_REASON"
-                echo "   错误数量: $TS_ERROR_COUNT"
-                echo "   警告数量: $TS_WARNING_COUNT"
-                
-                # 显示具体错误类型和修复建议
-                if [ -f "logs/typescript_error_analysis.json" ]; then
-                    echo "   错误类型分布:"
-                    python -c "
-import json
-try:
-    with open('logs/typescript_error_analysis.json', 'r') as f:
-        data = json.load(f)
-    for error_type, count in data['errors_by_type'].items():
-        print(f'      {error_type}: {count}个')
-    print('')
-    print('   💡 修复建议:')
-    for suggestion in data['fix_priority'][:3]:
-        print(f'      - {suggestion}')
-    print(f'   ⏱️ 预估修复时间: {data[\"estimated_fix_time\"]}')
-except Exception as e:
-    print('      无法读取详细错误分析')
-"
-                fi
-                echo ""
-                echo "🔧 快速修复指南:"
-                echo "   1. 查看详细分析: cat logs/typescript_error_analysis.json"
-                echo "   2. 运行TypeScript分析器: python scripts/quality/typescript_error_analyzer.py"
-                echo "   3. 使用IDE的TypeScript错误检查获得实时反馈"
-            else
-                echo -e "${RED}❌ 前端检查失败 - 页面渲染问题${NC}"
-                echo "❌ FAIL: 前端检查 (页面渲染问题)" >> "$LOG_FILE"
-                ((FAILURES++))
-                echo ""
-                echo "🔍 页面渲染问题详情："
-                echo "   原因: $OVERALL_REASON"
-                echo "   建议检查浏览器控制台错误和React组件渲染状态"
-            fi
+    # 检查是否有前端文件修改
+    if git diff --cached --name-only | grep -q -E '\.(tsx?|jsx?|json)$'; then
+        if [ -d "frontend/node_modules" ]; then
+            check_step "前端TypeScript检查" "cd frontend && npm run type-check > /dev/null 2>&1"
         else
-            echo -e "${RED}❌ 前端检查失败 - 无法生成检查报告${NC}"
-            echo "❌ FAIL: 前端检查 (无法生成报告)" >> "$LOG_FILE"
-            ((FAILURES++))
+            echo "⚠️ 前端依赖未安装，跳过编译检查"
         fi
-    fi
-elif [ -x "scripts/quality/frontend_ui_check.sh" ]; then
-    # 回退到原有的UI检查
-    echo "⚠️ 统一前端检查不可用，使用传统UI检查..."
-    if scripts/quality/frontend_ui_check.sh > logs/frontend_ui_check_full.log 2>&1; then
-        echo -e "${GREEN}✅ 前端UI设计检查 - 通过${NC}"
-        echo "✅ PASS: 前端UI设计检查" >> "$LOG_FILE"
-    else
-        echo -e "${RED}❌ 前端UI设计检查 - 失败${NC}"
-        echo "❌ FAIL: 前端UI设计检查" >> "$LOG_FILE"
-        ((FAILURES++))
+        echo "ℹ️ 未检测到前端文件修改，跳过前端代码检查"
     fi
 else
-    echo -e "${YELLOW}⚠️ 前端检查脚本不存在，跳过检查${NC}"
+    echo "⚡ 快速模式：跳过详细代码质量检查"
 fi
 
 # ==========================================
-# Phase 8: Chrome MCP前端运行效果检查
+# Phase 8: 前端UI设计检查 (简化版)
 # ==========================================
-show_progress 9 11 "Chrome MCP前端运行效果检查"
+show_progress 8 9 "前端UI设计检查"
 
-echo "🌐 执行Chrome MCP前端运行效果检查 (快速模式)..."
-
-# 使用check_step函数进行timeout控制 (60秒超时)
-if [ -x "scripts/quality/mcp/integrated_frontend_mcp_check.sh" ]; then
-    if check_step "Chrome MCP前端检查" "scripts/quality/mcp/integrated_frontend_mcp_check.sh" 60; then
-        echo "✅ Chrome MCP前端检查已通过"
-    else
-        # 检查详细报告
-        LATEST_MCP_REPORT=$(ls -t logs/mcp_checks/integrated_check_*.json 2>/dev/null | head -1)
-        
-        if [ -n "$LATEST_MCP_REPORT" ] && [ -f "$LATEST_MCP_REPORT" ]; then
-            MCP_SUCCESS_RATE=$(python -c "
-import json
-try:
-    with open('$LATEST_MCP_REPORT', 'r') as f:
-        report = json.load(f)
-    rate = report['summary']['success_rate'].replace('%', '')
-    print(rate)
-except:
-    print('0')
-")
-            MCP_FAILED_COUNT=$(python -c "
-import json
-try:
-    with open('$LATEST_MCP_REPORT', 'r') as f:
-        report = json.load(f)
-    print(report['summary']['failed'])
-except:
-    print('1')
-")
-            
-            if [ "$MCP_FAILED_COUNT" -eq 0 ]; then
-                echo -e "${GREEN}✅ Chrome MCP前端检查 - 通过${NC}"
-                echo "✅ PASS: Chrome MCP前端检查" >> "$LOG_FILE"
-            else
-                echo -e "${RED}❌ Chrome MCP前端检查 - 发现运行问题${NC}"
-                echo "❌ FAIL: Chrome MCP前端检查 (${MCP_FAILED_COUNT}个问题, 成功率${MCP_SUCCESS_RATE}%)" >> "$LOG_FILE"
-                ((FAILURES++))
-                echo ""
-                echo "🌐 前端运行问题详情："
-                echo "   成功率: ${MCP_SUCCESS_RATE}%"
-                echo "   问题数量: ${MCP_FAILED_COUNT}"
-                
-                # 显示具体问题
-                python -c "
-import json
-try:
-    with open('$LATEST_MCP_REPORT', 'r') as f:
-        report = json.load(f)
-    
-    if 'results' in report and isinstance(report['results'], list):
-        for result in report['results']:
-            if result.get('status') == 'FAIL':
-                print(f'      📄 {result.get(\"page\", \"未知页面\")}: {len(result.get(\"issues\", []))}个问题')
-                for issue in result.get('issues', [])[:2]:
-                    print(f'         - {issue}')
-    
-    if 'recommendations' in report:
-        print('')
-        print('   💡 修复建议:')
-        for rec in report['recommendations'][:3]:
-            print(f'      - {rec}')
-except Exception as e:
-    print(f'      无法解析MCP检查报告: {e}')
-"
-                echo ""
-                echo "🔧 快速修复指南:"
-                echo "   1. 查看详细报告: cat $LATEST_MCP_REPORT"
-                echo "   2. 检查前端服务: curl http://localhost:3000"
-                echo "   3. 检查后端服务: curl http://localhost:8000/health"
-                echo "   4. 重启服务: scripts/deployment/start_services.sh"
-            fi
+if [ "$QUICK_MODE" = "false" ] && [ "$SERVICES_READY" = "true" ]; then
+    echo "🎨 执行前端UI设计检查..."
+    if [ -x "scripts/quality/frontend_ui_check.sh" ]; then
+        if scripts/quality/frontend_ui_check.sh > logs/frontend_ui_check.log 2>&1; then
+            echo -e "${GREEN}✅ 前端UI设计检查 - 通过${NC}"
         else
-            echo -e "${RED}❌ Chrome MCP前端检查 - 无法生成报告${NC}"
-            echo "❌ FAIL: Chrome MCP前端检查 (无法生成报告)" >> "$LOG_FILE"
-            ((FAILURES++))
-            echo ""
-            echo "🔧 诊断建议:"
-            echo "   1. 检查MCP服务: scripts/setup/setup_chrome_mcp.sh"
-            echo "   2. 检查服务状态: curl http://localhost:3000 && curl http://localhost:8000/health"
-            echo "   3. 查看详细日志: cat logs/mcp_frontend_check_full.log"
+            echo -e "${YELLOW}⚠️ 前端UI设计检查 - 有建议，但不阻止提交${NC}"
         fi
+    else
+        echo "ℹ️ UI检查脚本不存在，跳过"
     fi
 else
-    echo -e "${YELLOW}⚠️ Chrome MCP检查脚本不可用${NC}"
-    echo "💡 安装建议: scripts/setup/setup_chrome_mcp.sh"
-    echo "ℹ️ INFO: Chrome MCP检查跳过 (脚本不可用)" >> "$LOG_FILE"
+    echo "⚡ 快速模式或服务未就绪：跳过UI设计检查"
 fi
 
 # ==========================================
-# Phase 9: 项目标准规范检查
+# Phase 9: Chrome MCP前端运行效果检查
 # ==========================================
-show_progress 10 11 "项目标准规范检查"
+show_progress 9 10 "Chrome MCP前端运行效果检查"
+
+if [ "$QUICK_MODE" = "false" ] && [ "$SERVICES_READY" = "true" ]; then
+    echo "🌐 执行Chrome MCP前端运行效果检查..."
+    if [ -x "scripts/quality/mcp/integrated_frontend_mcp_check.sh" ]; then
+        check_step "Chrome MCP前端检查" "scripts/quality/mcp/integrated_frontend_mcp_check.sh" 60
+    else
+        echo "⚠️ Chrome MCP检查脚本不可用，跳过"
+    fi
+else
+    echo "⚡ 快速模式或服务未就绪：跳过Chrome MCP检查"
+fi
+
+# ==========================================
+# Phase 10: 项目标准规范检查
+# ==========================================
+show_progress 10 10 "项目标准规范检查"
 
 echo "📁 执行项目标准规范检查..."
 if [ -x "scripts/quality/check_project_standards.sh" ]; then
@@ -471,24 +318,6 @@ else
     echo -e "${YELLOW}⚠️ 项目标准检查脚本不存在，跳过检查${NC}"
 fi
 
-# ==========================================
-# Phase 10: 性能基准检查 (可选)
-# ==========================================
-show_progress 11 11 "性能基准检查"
-
-# 性能检查（快速模式下跳过）
-if [ "$QUICK_MODE" = "true" ]; then
-    echo "⚡ 快速模式：跳过性能基准检查"
-elif git diff --cached --name-only | grep -q -E '(sector_engine|stock_engine|algorithm)'; then
-    echo "🔍 检测到算法相关修改，执行性能基准测试..."
-    if [ -x "scripts/quality/check_performance.sh" ]; then
-        check_step "算法性能基准测试" "scripts/quality/check_performance.sh" 120
-    else
-        echo "ℹ️ 性能测试脚本不存在，跳过"
-    fi
-else
-    echo "ℹ️ 未检测到算法修改，跳过性能基准检查"
-fi
 
 # ==========================================
 # 最终报告

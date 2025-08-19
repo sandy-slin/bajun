@@ -223,127 +223,63 @@ class WebSocketManager:
             logger.error(f"市场数据推送错误: {e}")
     
     async def push_sector_updates(self):
-        """推送板块更新"""
+        """推送板块更新 - 基于真实数据"""
         try:
             while self.is_running:
-                # 模拟板块数据更新
-                sector_updates = {
-                    'timestamp': datetime.now().isoformat(),
-                    'top_sectors': [
-                        {'name': '医药生物', 'score': 78.5, 'change': 1.2, 'trend': 'up'},
-                        {'name': '食品饮料', 'score': 75.2, 'change': 0.8, 'trend': 'up'},
-                        {'name': '电子', 'score': 72.8, 'change': -0.5, 'trend': 'down'}
-                    ],
-                    'market_sentiment': 'optimistic',
-                    'optimization_status': 'algorithm_optimized'
-                }
+                # 获取真实板块数据
+                sector_updates = await self._fetch_real_sector_data()
                 
                 await self.broadcast_to_subscribers('sector_updates', sector_updates)
-                await asyncio.sleep(30)  # 每30秒推送一次
+                await asyncio.sleep(300)  # 每5分钟推送一次，减少API调用
                 
         except asyncio.CancelledError:
             pass
         except Exception as e:
             logger.error(f"板块更新推送错误: {e}")
+            # 真实数据获取失败时不推送，避免模拟数据
     
     async def push_portfolio_alerts(self):
-        """推送投资组合预警"""
+        """推送投资组合预警 - 基于真实持仓数据"""
         try:
             while self.is_running:
-                # 模拟组合预警
-                portfolio_alerts = {
-                    'timestamp': datetime.now().isoformat(),
-                    'alerts': [
-                        {
-                            'type': 'position_limit',
-                            'message': '平安银行仓位接近15%上限',
-                            'severity': 'warning',
-                            'stock_code': '000001'
-                        },
-                        {
-                            'type': 'profit_taking',
-                            'message': '贵州茅台盈利18%，建议部分获利',
-                            'severity': 'info',
-                            'stock_code': '600519'
-                        }
-                    ],
-                    'portfolio_performance': {
-                        'total_return': 0.31,  # 基于优化后的性能
-                        'best_performer': '宁德时代 +12.5%',
-                        'worst_performer': '平安银行 -3.2%'
-                    }
-                }
+                # 获取真实投资组合预警
+                portfolio_alerts = await self._fetch_real_portfolio_alerts()
                 
-                await self.broadcast_to_subscribers('portfolio_alerts', portfolio_alerts)
-                await asyncio.sleep(60)  # 每分钟推送一次
+                if portfolio_alerts:  # 只有真实预警时才推送
+                    await self.broadcast_to_subscribers('portfolio_alerts', portfolio_alerts)
+                
+                await asyncio.sleep(600)  # 每10分钟检查一次
                 
         except asyncio.CancelledError:
             pass
         except Exception as e:
             logger.error(f"组合预警推送错误: {e}")
+            # 真实数据获取失败时不推送
     
     async def push_trading_signals(self):
-        """推送交易信号"""
+        """推送交易信号 - 基于真实分析"""
         try:
             while self.is_running:
-                # 模拟交易信号
-                trading_signals = {
-                    'timestamp': datetime.now().isoformat(),
-                    'signals': [
-                        {
-                            'type': 'sector_rotation',
-                            'message': '医药生物板块强势，建议关注',
-                            'confidence': 0.75,
-                            'time_horizon': '1-2周'
-                        },
-                        {
-                            'type': 'anti_human_nature',
-                            'message': '检测到市场恐慌情绪，可能是抄底机会',
-                            'confidence': 0.68,
-                            'advice': '保持冷静，按计划执行'
-                        }
-                    ],
-                    'market_emotion': {
-                        'fear_greed_index': 35,  # 恐慌区域
-                        'trend': 'fear_increasing',
-                        'recommendation': 'contrarian_opportunity'
-                    }
-                }
+                # 获取真实交易信号
+                trading_signals = await self._fetch_real_trading_signals()
                 
-                await self.broadcast_to_subscribers('trading_signals', trading_signals)
-                await asyncio.sleep(120)  # 每2分钟推送一次
+                if trading_signals:  # 只有真实信号时才推送
+                    await self.broadcast_to_subscribers('trading_signals', trading_signals)
+                
+                await asyncio.sleep(1800)  # 每30分钟分析一次
                 
         except asyncio.CancelledError:
             pass
         except Exception as e:
             logger.error(f"交易信号推送错误: {e}")
+            # 真实分析失败时不推送
     
     async def push_system_status(self):
-        """推送系统状态"""
+        """推送系统状态 - 基于真实监控"""
         try:
             while self.is_running:
-                # 模拟系统状态
-                system_status = {
-                    'timestamp': datetime.now().isoformat(),
-                    'services': {
-                        'api_server': 'healthy',
-                        'data_feeds': 'healthy',
-                        'algorithm_engine': 'optimized',
-                        'database': 'healthy'
-                    },
-                    'performance_metrics': {
-                        'sector_accuracy': '69.0%',    # 优化后性能
-                        'stock_win_rate': '50.0%',     # 优化后性能
-                        'portfolio_return': '0.31%',   # 优化后性能
-                        'system_uptime': '99.9%'
-                    },
-                    'active_connections': len(self.active_connections),
-                    'optimization_status': {
-                        'last_optimization': '2025-08-17T18:56:24',
-                        'improvement': '+53.0%',
-                        'status': 'production_ready'
-                    }
-                }
+                # 获取真实系统状态
+                system_status = await self._fetch_real_system_status()
                 
                 await self.broadcast_to_subscribers('system_status', system_status)
                 await asyncio.sleep(300)  # 每5分钟推送一次
@@ -352,7 +288,102 @@ class WebSocketManager:
             pass
         except Exception as e:
             logger.error(f"系统状态推送错误: {e}")
+            # 系统状态获取失败时停止推送该服务
     
+    async def _fetch_real_sector_data(self) -> Dict:
+        """获取真实板块数据"""
+        if not AKSHARE_AVAILABLE:
+            logger.error("AKShare不可用，无法获取板块数据")
+            raise RuntimeError("AKShare不可用，无法获取板块数据")
+        
+        try:
+            # 获取申万一级行业指数
+            sw_index = ak.sw_index_spot()
+            if sw_index.empty:
+                raise RuntimeError("无法获取申万行业指数数据")
+            
+            # 选择涨幅前3的板块
+            top_sectors = sw_index.sort_values('涨跌幅', ascending=False).head(3)
+            
+            sector_list = []
+            for _, sector in top_sectors.iterrows():
+                sector_list.append({
+                    'name': sector['指数名称'],
+                    'code': sector['指数代码'],
+                    'change_pct': float(sector['涨跌幅']),
+                    'latest_price': float(sector['最新价']),
+                    'trend': 'up' if sector['涨跌幅'] > 0 else 'down'
+                })
+            
+            return {
+                'timestamp': datetime.now().isoformat(),
+                'top_sectors': sector_list,
+                'data_source': 'akshare_sw_index',
+                'update_frequency': '5min'
+            }
+        except Exception as e:
+            logger.error(f"获取真实板块数据失败: {e}")
+            raise RuntimeError(f"无法获取真实板块数据: {e}")
+
+    async def _fetch_real_portfolio_alerts(self) -> Dict:
+        """获取真实投资组合预警"""
+        # 由于需要用户持仓数据，这里返回空，避免模拟数据
+        # 实际应用中需要从用户持仓数据库获取
+        return None
+
+    async def _fetch_real_trading_signals(self) -> Dict:
+        """获取真实交易信号"""
+        # 基于真实技术分析生成信号，暂时返回空避免模拟数据
+        # 实际应用中需要基于真实技术指标计算
+        return None
+
+    async def _fetch_real_system_status(self) -> Dict:
+        """获取真实系统状态"""
+        try:
+            import psutil
+            import os
+            
+            # 获取真实系统资源使用情况
+            cpu_percent = psutil.cpu_percent(interval=1)
+            memory = psutil.virtual_memory()
+            disk = psutil.disk_usage('/')
+            
+            # 检查数据源连接状态
+            akshare_status = "connected" if AKSHARE_AVAILABLE else "disconnected"
+            
+            return {
+                'timestamp': datetime.now().isoformat(),
+                'services': {
+                    'api_server': 'running',
+                    'data_feeds': akshare_status,
+                    'websocket': 'active',
+                    'system_resources': 'normal'
+                },
+                'resource_usage': {
+                    'cpu_percent': round(cpu_percent, 1),
+                    'memory_percent': round(memory.percent, 1),
+                    'disk_percent': round((disk.used / disk.total) * 100, 1),
+                    'active_connections': len(self.active_connections)
+                },
+                'data_sources': {
+                    'akshare': akshare_status,
+                    'market_data_updated': datetime.now().strftime('%H:%M:%S')
+                }
+            }
+        except Exception as e:
+            logger.error(f"获取系统状态失败: {e}")
+            # 返回基本状态信息
+            return {
+                'timestamp': datetime.now().isoformat(),
+                'services': {
+                    'api_server': 'running',
+                    'data_feeds': 'unknown',
+                    'websocket': 'active'
+                },
+                'active_connections': len(self.active_connections),
+                'status': 'limited_monitoring'
+            }
+
     async def _fetch_real_market_data(self) -> Dict:
         """获取真实市场数据 - 禁止使用模拟数据"""
         if not AKSHARE_AVAILABLE:

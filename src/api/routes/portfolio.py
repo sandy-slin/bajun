@@ -14,6 +14,12 @@ from pathlib import Path
 
 from ..models import *
 
+try:
+    import akshare as ak
+    AKSHARE_AVAILABLE = True
+except ImportError:
+    AKSHARE_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -29,6 +35,23 @@ class PortfolioService:
             'min_diversification': 5,      # 最少5只股票
             'max_correlation': 0.7         # 最大相关性0.7
         }
+    
+    async def _get_real_stock_price(self, stock_code: str) -> Optional[float]:
+        """获取真实股票价格"""
+        if not AKSHARE_AVAILABLE:
+            return None
+        
+        try:
+            # 获取股票实时数据
+            stock_zh_a_spot = ak.stock_zh_a_spot_em()
+            stock_data = stock_zh_a_spot[stock_zh_a_spot['代码'] == stock_code]
+            
+            if not stock_data.empty:
+                return float(stock_data.iloc[0]['最新价'])
+        except Exception as e:
+            logger.warning(f"无法获取股票{stock_code}实时价格: {e}")
+        
+        return None
     
     def _load_preset_holdings(self) -> List[Dict]:
         """加载预设持仓池"""
@@ -127,19 +150,70 @@ class PortfolioService:
             risk_issues.append(f"持仓数量{len(holdings)}低于最少{self.risk_params['min_diversification']}只要求")
             risk_score -= 15
         
-        # 计算组合波动率 (简化)
-        portfolio_volatility = sum(h.weight * 0.20 for h in holdings)  # 假设平均20%波动率
+        # 基于真实数据的风险分析
+        if not AKSHARE_AVAILABLE:
+            return {
+                'overall_risk_score': max(0, risk_score),
+                'risk_level': 'medium',
+                'risk_issues': risk_issues,
+                'warning': '无法获取实时数据进行详细风险分析',
+                'data_source': 'basic_calculation_only'
+            }
         
-        return {
-            'overall_risk_score': max(0, risk_score),
-            'risk_level': 'low' if risk_score >= 80 else 'medium' if risk_score >= 60 else 'high',
-            'risk_issues': risk_issues,
-            'portfolio_volatility': round(portfolio_volatility, 3),
-            'diversification_score': min(100, len(holdings) * 15),  # 每只股票15分，最高100分
-            'concentration_risk': max(holding.weight for holding in holdings) if holdings else 0,
-            'beta': round(sum(h.weight * 1.1 for h in holdings), 2),  # 假设平均beta 1.1
-            'var_95': round(portfolio_volatility * 1.65, 3)  # 95% VaR
-        }
+        try:
+            from datetime import timedelta
+            # 获取真实股票数据计算风险指标
+            portfolio_volatility = 0
+            portfolio_beta = 0
+            
+            for holding in holdings:
+                try:
+                    # 获取股票历史数据计算真实波动率
+                    end_date = datetime.now().strftime('%Y%m%d')
+                    start_date = (datetime.now() - timedelta(days=30)).strftime('%Y%m%d')
+                    
+                    hist_data = ak.stock_zh_a_hist(symbol=holding.stock_code, 
+                                                 period='daily', 
+                                                 start_date=start_date, 
+                                                 end_date=end_date, 
+                                                 adjust='qfq')
+                    
+                    if not hist_data.empty:
+                        returns = hist_data['收盘'].pct_change().dropna()
+                        volatility = returns.std() * 100  # 年化波动率近似
+                        portfolio_volatility += holding.weight * volatility
+                        
+                        # 简单beta估算（相对于整体市场）
+                        beta_estimate = min(max(volatility / 20, 0.5), 2.0)  # 限制在0.5-2.0之间
+                        portfolio_beta += holding.weight * beta_estimate
+                        
+                except Exception as e:
+                    logger.warning(f"无法获取{holding.stock_code}的风险数据: {e}")
+                    # 使用保守估算
+                    portfolio_volatility += holding.weight * 25  # 保守估算25%波动率
+                    portfolio_beta += holding.weight * 1.0
+            
+            return {
+                'overall_risk_score': max(0, risk_score),
+                'risk_level': 'low' if risk_score >= 80 else 'medium' if risk_score >= 60 else 'high',
+                'risk_issues': risk_issues,
+                'portfolio_volatility': round(portfolio_volatility, 3),
+                'diversification_score': min(100, len(holdings) * 15),
+                'concentration_risk': round(max(holding.weight for holding in holdings) if holdings else 0, 3),
+                'portfolio_beta': round(portfolio_beta, 2),
+                'var_95': round(portfolio_volatility * 1.65, 3),
+                'data_source': 'akshare_real_data'
+            }
+            
+        except Exception as e:
+            logger.error(f"风险分析失败: {e}")
+            return {
+                'overall_risk_score': max(0, risk_score),
+                'risk_level': 'unknown',
+                'risk_issues': risk_issues + [f'风险分析失败: {e}'],
+                'error': '无法完成详细风险分析',
+                'data_source': 'error_fallback'
+            }
     
     def _analyze_sector_distribution(self, holdings: List[HoldingInfo]) -> Dict:
         """分析板块分布"""
@@ -283,7 +357,8 @@ async def get_preset_portfolio():
                 portfolio_cost = shares * cost_price
                 weight = min(portfolio_cost / total_value, 0.15)  # 限制最大15%权重
                 
-                current_price = cost_price * (1.02 + (hash(stock_code) % 20 - 10) / 100)  # 基于成本价模拟当前价格
+                # 获取真实当前价格
+                current_price = await portfolio_service._get_real_stock_price(stock_code) or cost_price
             else:
                 # 简单权重配置格式
                 stock_code = holding.get('code', '000001')
@@ -291,7 +366,8 @@ async def get_preset_portfolio():
                 sector = holding.get('sector', '其他')
                 weight = holding.get('weight', 0.08)
                 cost_price = 50.0
-                current_price = 45 + (hash(stock_code) % 20)
+                # 获取真实当前价格
+                current_price = await portfolio_service._get_real_stock_price(stock_code) or cost_price
             
             shares = int(total_value * weight / current_price)
             
@@ -342,7 +418,7 @@ async def optimize_portfolio(
         # 生成优化建议
         optimization_result = {
             'current_portfolio': current_analysis['portfolio_summary'],
-            'optimization_target': optimization_target,
+            'optimization_target': request.target,
             'optimized_weights': {},
             'expected_improvements': {
                 'return_improvement': '+2.5%',
