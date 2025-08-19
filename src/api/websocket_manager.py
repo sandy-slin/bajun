@@ -12,6 +12,12 @@ import json
 import logging
 from datetime import datetime
 
+try:
+    import akshare as ak
+    AKSHARE_AVAILABLE = True
+except ImportError:
+    AKSHARE_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 class WebSocketManager:
@@ -202,30 +208,11 @@ class WebSocketManager:
         self.push_tasks.clear()
     
     async def push_market_data(self):
-        """推送市场行情数据"""
+        """推送市场行情数据 - 使用真实AKShare数据"""
         try:
             while self.is_running:
-                # 模拟市场数据
-                market_data = {
-                    'timestamp': datetime.now().isoformat(),
-                    'market_indices': {
-                        'sh_composite': {
-                            'value': 3150.25 + (hash(str(datetime.now().second)) % 20 - 10),
-                            'change': 0.5 + (hash(str(datetime.now().second)) % 10 - 5) / 10,
-                            'change_pct': 0.02
-                        },
-                        'sz_component': {
-                            'value': 11250.80 + (hash(str(datetime.now().second + 1)) % 30 - 15),
-                            'change': 1.2 + (hash(str(datetime.now().second + 1)) % 10 - 5) / 10,
-                            'change_pct': 0.01
-                        }
-                    },
-                    'hot_stocks': [
-                        {'code': '000001', 'name': '平安银行', 'price': 12.08, 'change_pct': 0.8},
-                        {'code': '600519', 'name': '贵州茅台', 'price': 1680.50, 'change_pct': -0.5},
-                        {'code': '300750', 'name': '宁德时代', 'price': 185.20, 'change_pct': 1.2}
-                    ]
-                }
+                # 获取真实市场数据
+                market_data = await self._fetch_real_market_data()
                 
                 await self.broadcast_to_subscribers('market_data', market_data)
                 await asyncio.sleep(5)  # 每5秒推送一次
@@ -365,6 +352,101 @@ class WebSocketManager:
             pass
         except Exception as e:
             logger.error(f"系统状态推送错误: {e}")
+    
+    async def _fetch_real_market_data(self) -> Dict:
+        """获取真实市场数据 - 禁止使用模拟数据"""
+        if not AKSHARE_AVAILABLE:
+            logger.error("AKShare不可用，无法获取真实市场数据")
+            raise RuntimeError("AKShare不可用，无法获取真实市场数据")
+        
+        try:
+            # 获取今日数据
+            today = datetime.now().strftime('%Y%m%d')
+            
+            # 获取上证综指数据
+            sh_hist = ak.index_zh_a_hist(symbol='000001', period='daily', start_date=today, end_date=today)
+            
+            if sh_hist.empty:
+                logger.error("无法获取上证综指今日数据")
+                raise RuntimeError("无法获取上证综指今日数据，请检查交易日或数据源")
+            
+            latest_sh = sh_hist.iloc[-1]
+            sh_close = float(latest_sh['收盘'])
+            sh_open = float(latest_sh['开盘'])
+            sh_change = sh_close - sh_open
+            sh_change_pct = (sh_change / sh_open) * 100 if sh_open > 0 else 0.0
+            
+            sh_data = {
+                'value': round(sh_close, 2),
+                'change': round(sh_change, 2),
+                'change_pct': round(sh_change_pct, 2)
+            }
+            logger.info(f"获取上证综指数据成功: {sh_close}")
+            
+            # 获取深证成指数据
+            sz_hist = ak.index_zh_a_hist(symbol='399001', period='daily', start_date=today, end_date=today)
+            
+            if sz_hist.empty:
+                logger.error("无法获取深证成指今日数据")
+                raise RuntimeError("无法获取深证成指今日数据，请检查交易日或数据源")
+            
+            latest_sz = sz_hist.iloc[-1]
+            sz_close = float(latest_sz['收盘'])
+            sz_open = float(latest_sz['开盘'])
+            sz_change = sz_close - sz_open
+            sz_change_pct = (sz_change / sz_open) * 100 if sz_open > 0 else 0.0
+            
+            sz_data = {
+                'value': round(sz_close, 2),
+                'change': round(sz_change, 2),
+                'change_pct': round(sz_change_pct, 2)
+            }
+            logger.info(f"获取深证成指数据成功: {sz_close}")
+            
+            # 获取热门股票数据 (可选，如果失败不影响主要指数)
+            hot_stocks = []
+            try:
+                hot_stock_codes = ['000001', '600519', '300750']
+                for stock_code in hot_stock_codes:
+                    stock_hist = ak.stock_zh_a_hist(symbol=stock_code, period='daily', start_date=today, end_date=today, adjust='qfq')
+                    if not stock_hist.empty:
+                        latest_stock = stock_hist.iloc[-1]
+                        stock_close = float(latest_stock['收盘'])
+                        stock_open = float(latest_stock['开盘'])
+                        stock_change_pct = ((stock_close - stock_open) / stock_open) * 100 if stock_open > 0 else 0.0
+                        
+                        stock_name_map = {
+                            '000001': '平安银行',
+                            '600519': '贵州茅台', 
+                            '300750': '宁德时代'
+                        }
+                        
+                        hot_stocks.append({
+                            'code': stock_code,
+                            'name': stock_name_map.get(stock_code, f'股票{stock_code}'),
+                            'price': round(stock_close, 2),
+                            'change_pct': round(stock_change_pct, 2)
+                        })
+            except Exception as e:
+                logger.warning(f"获取热门股票数据失败: {e}")
+                # 热门股票获取失败不影响主要功能
+                hot_stocks = []
+            
+            market_data = {
+                'timestamp': datetime.now().isoformat(),
+                'market_indices': {
+                    'sh_composite': sh_data,
+                    'sz_component': sz_data
+                },
+                'hot_stocks': hot_stocks
+            }
+            
+            return market_data
+            
+        except Exception as e:
+            logger.error(f"获取真实市场数据失败: {e}")
+            raise RuntimeError(f"无法获取真实市场数据: {e}")
+    
     
     def get_connection_stats(self) -> Dict:
         """获取连接统计信息"""

@@ -1,0 +1,272 @@
+{
+  "timestamp": "2025-08-17T18:54:37.099659",
+  "detailed_results": [
+    {
+      "test_date": "20240701",
+      "sector_results": {
+        "predictions": [
+          49.63331365430631,
+          43.46617914811695,
+          45.89230186215421,
+          51.5127210974978,
+          47.12351954790135
+        ],
+        "actual": [
+          -0.8807108366607808,
+          -3.2076640075765828,
+          -3.402376798530282,
+          -3.070993483803941,
+          -3.7928912724759067
+        ],
+        "accuracy": 0.8,
+        "sectors_tested": 5
+      },
+      "stock_results": {
+        "selected_stocks": [
+          {
+            "code": "000002",
+            "score": 58.78832018215077,
+            "actual_return": -4.801097393689979
+          },
+          {
+            "code": "000001",
+            "score": 57.33182494008071,
+            "actual_return": -0.8695652173912993
+          },
+          {
+            "code": "000858",
+            "score": 45.82247440718628,
+            "actual_return": 1.7848791893998461
+          }
+        ],
+        "win_rate": 0.3333333333333333,
+        "average_return": -1.2952611405604773
+      },
+      "portfolio_results": {
+        "total_return": -1.295261140560477,
+        "sharpe_ratio": -1.5875969978971043,
+        "selected_count": 3
+      },
+      "timestamp": "2025-08-17T18:54:23.686078"
+    },
+    {
+      "test_date": "20240801",
+      "sector_results": {
+        "predictions": [
+          48.397806162480435,
+          47.80951163757765,
+          51.42093257533408,
+          52.38033105993104,
+          53.15198341326642
+        ],
+        "actual": [
+          -1.890559402066705,
+          3.2787716844191683,
+          2.005227088457384,
+          -7.037725292151409,
+          -3.369907658881044
+        ],
+        "accuracy": 0.4,
+        "sectors_tested": 5
+      },
+      "stock_results": {
+        "selected_stocks": [
+          {
+            "code": "000002",
+            "score": 56.301274117436016,
+            "actual_return": -0.28985507246377384
+          },
+          {
+            "code": "000001",
+            "score": 53.582287483678456,
+            "actual_return": -3.3106134371957197
+          },
+          {
+            "code": "000858",
+            "score": 47.31669962528071,
+            "actual_return": 1.5322580645161343
+          }
+        ],
+        "win_rate": 0.3333333333333333,
+        "average_return": -0.6894034817144531
+      },
+      "portfolio_results": {
+        "total_return": -0.689403481714453,
+        "sharpe_ratio": -1.8473082390580895,
+        "selected_count": 3
+      },
+      "timestamp": "2025-08-17T18:54:27.403517"
+    },
+    {
+      "test_date": "20240901",
+      "sector_results": {
+        "predictions": [
+          49.30838653591749,
+          50.01271782245083,
+          48.31008718321505,
+          48.76491635965089,
+          50.23482528001277
+        ],
+        "actual": [
+          -1.6826047911458475,
+          -3.531041025389947,
+          -2.0453354257057854,
+          -5.267407589340534,
+          -0.5084134703817966
+        ],
+        "accuracy": 0.6,
+        "sectors_tested": 5
+      },
+      "stock_results": {
+        "selected_stocks": [
+          {
+            "code": "000002",
+            "score": 61.463156652541784,
+            "actual_return": -4.437869822485208
+          },
+          {
+            "code": "600519",
+            "score": 54.03627291623139,
+            "actual_return": -2.992675947034007
+          },
+          {
+            "code": "000858",
+            "score": 53.60607983158394,
+            "actual_return": -3.1862147443712963
+          }
+        ],
+        "win_rate": 0.0,
+        "average_return": -3.5389201712968372
+      },
+      "portfolio_results": {
+        "total_return": -3.5389201712968372,
+        "sharpe_ratio": -10.208366986636003,
+        "selected_count": 3
+      },
+      "timestamp": "2025-08-17T18:54:30.344102"
+    },
+    {
+      "test_date": "20241001",
+      "sector_results": {
+        "predictions": [
+          55.13933408457983,
+          62.89660842346474,
+          60.67299858939778,
+          61.18012011560579,
+          67.69313589403842
+        ],
+        "actual": [
+          2.5526699831488253,
+          -7.008242590697589,
+          -4.775858477557726,
+          4.048341950482737,
+          0.6855068873786951
+        ],
+        "accuracy": 0.6,
+        "sectors_tested": 5
+      },
+      "stock_results": {
+        "selected_stocks": [
+          {
+            "code": "000858",
+            "score": 127.25791920620017,
+            "actual_return": -6.479601255307365
+          },
+          {
+            "code": "600519",
+            "score": 117.72891977956922,
+            "actual_return": -6.178489702517165
+          },
+          {
+            "code": "300750",
+            "score": 110.7719782954386,
+            "actual_return": 2.42566199531542
+          }
+        ],
+        "win_rate": 0.3333333333333333,
+        "average_return": -3.4108096541697037
+      },
+      "portfolio_results": {
+        "total_return": -3.4108096541697037,
+        "sharpe_ratio": -1.5526906121415054,
+        "selected_count": 3
+      },
+      "timestamp": "2025-08-17T18:54:33.901943"
+    },
+    {
+      "test_date": "20241101",
+      "sector_results": {
+        "predictions": [
+          51.816516758161036,
+          49.86298797046981,
+          53.58291637594688,
+          61.8736846707332,
+          56.460599873744414
+        ],
+        "actual": [
+          1.3655138148393808,
+          7.124156357264355,
+          6.425925726819193,
+          9.360624763231385,
+          12.004705234043023
+        ],
+        "accuracy": 0.8,
+        "sectors_tested": 5
+      },
+      "stock_results": {
+        "selected_stocks": [
+          {
+            "code": "000858",
+            "score": 49.97969319664137,
+            "actual_return": 2.2512168739859506
+          },
+          {
+            "code": "000002",
+            "score": 49.54190112999552,
+            "actual_return": 4.281009879253572
+          },
+          {
+            "code": "600519",
+            "score": 46.8034527565611,
+            "actual_return": 2.4286878565607184
+          }
+        ],
+        "win_rate": 1.0,
+        "average_return": 2.9869715366000804
+      },
+      "portfolio_results": {
+        "total_return": 2.9869715366000804,
+        "sharpe_ratio": -0.014193969775975347,
+        "selected_count": 3
+      },
+      "timestamp": "2025-08-17T18:54:37.098727"
+    }
+  ],
+  "summary": {
+    "validation_periods": 5,
+    "sector_analysis": {
+      "average_accuracy": 0.64,
+      "best_accuracy": 0.8,
+      "worst_accuracy": 0.4,
+      "stability": 0.14966629547095767
+    },
+    "stock_selection": {
+      "average_win_rate": 0.4,
+      "best_win_rate": 1.0,
+      "worst_win_rate": 0.0,
+      "stability": 0.3265986323710904
+    },
+    "portfolio_performance": {
+      "average_return": -1.1894845822282782,
+      "best_return": 2.9869715366000804,
+      "worst_return": -3.5389201712968372,
+      "positive_periods": 1,
+      "volatility": 2.3731071683470204
+    },
+    "overall_assessment": {
+      "score": 1017.8103083554346,
+      "grade": "A",
+      "readiness": "production_ready"
+    }
+  }
+}

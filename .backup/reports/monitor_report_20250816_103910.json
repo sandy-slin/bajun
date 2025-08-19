@@ -1,0 +1,80 @@
+{
+  "export_time": "2025-08-16T10:39:10.460472",
+  "system_health": {
+    "overall_status": "healthy",
+    "last_update": "2025-08-16T10:39:10.460483",
+    "metrics_summary": {
+      "avg_accuracy": 0.6460000000000001,
+      "accuracy_std": 0.04270831300812525,
+      "avg_prediction_time": 16.580000000000002,
+      "timing_std": 3.427768953707353,
+      "avg_data_quality": 0.826,
+      "avg_feature_count": 25.0,
+      "total_errors": 2,
+      "total_warnings": 2,
+      "sample_count": 5
+    },
+    "alerts": [],
+    "recommendations": [
+      "建议优化特征选择算法"
+    ]
+  },
+  "performance_history": [
+    {
+      "timestamp": "2025-08-16T10:39:08.955139",
+      "accuracy": 0.65,
+      "prediction_time": 15.2,
+      "data_quality_score": 0.85,
+      "feature_count": 25,
+      "error_count": 0,
+      "warning_count": 0
+    },
+    {
+      "timestamp": "2025-08-16T10:39:08.955154",
+      "accuracy": 0.68,
+      "prediction_time": 12.8,
+      "data_quality_score": 0.9,
+      "feature_count": 28,
+      "error_count": 0,
+      "warning_count": 1
+    },
+    {
+      "timestamp": "2025-08-16T10:39:08.955159",
+      "accuracy": 0.62,
+      "prediction_time": 18.5,
+      "data_quality_score": 0.78,
+      "feature_count": 22,
+      "error_count": 1,
+      "warning_count": 0
+    },
+    {
+      "timestamp": "2025-08-16T10:39:08.955162",
+      "accuracy": 0.7,
+      "prediction_time": 14.1,
+      "data_quality_score": 0.88,
+      "feature_count": 30,
+      "error_count": 0,
+      "warning_count": 0
+    },
+    {
+      "timestamp": "2025-08-16T10:39:08.955165",
+      "accuracy": 0.58,
+      "prediction_time": 22.3,
+      "data_quality_score": 0.72,
+      "feature_count": 20,
+      "error_count": 1,
+      "warning_count": 1
+    }
+  ],
+  "alert_history": [],
+  "configuration": {
+    "accuracy_warning": 0.55,
+    "accuracy_critical": 0.45,
+    "timing_warning": 30.0,
+    "timing_critical": 60.0,
+    "data_quality_warning": 0.7,
+    "error_rate_warning": 0.1,
+    "feature_count_min": 10,
+    "feature_count_max": 100
+  }
+}

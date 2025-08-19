@@ -1,0 +1,1028 @@
+{
+  "validation_summary": {
+    "test_framework": "SystematicBacktestValidator",
+    "test_timestamp": "2025-08-17T16:10:59.233895",
+    "total_test_periods": 4,
+    "successful_validations": 4,
+    "failed_validations": 0,
+    "success_rate": 100.0
+  },
+  "performance_metrics": {
+    "accuracy_statistics": {
+      "mean_accuracy": 15.76923076923077,
+      "median_accuracy": 11.538461538461538,
+      "std_accuracy": 16.86616303790823,
+      "min_accuracy": 0.0,
+      "max_accuracy": 40.0,
+      "accuracy_range": 40.0
+    },
+    "period_performance_summary": {
+      "3天": {
+        "mean_accuracy": 20.0,
+        "test_count": 2,
+        "success_rate": 0.0
+      },
+      "5天": {
+        "mean_accuracy": 11.538461538461538,
+        "test_count": 2,
+        "success_rate": 0.0
+      }
+    },
+    "sector_performance_summary": {
+      "银行": {
+        "mean_accuracy": 0.0,
+        "test_count": 4,
+        "consistency": 1.0
+      },
+      "非银金融": {
+        "mean_accuracy": 0.0,
+        "test_count": 4,
+        "consistency": 1.0
+      },
+      "房地产": {
+        "mean_accuracy": 25.0,
+        "test_count": 4,
+        "consistency": 0.5669872981077807
+      },
+      "食品饮料": {
+        "mean_accuracy": 25.0,
+        "test_count": 4,
+        "consistency": 0.5669872981077807
+      },
+      "家用电器": {
+        "mean_accuracy": 25.0,
+        "test_count": 4,
+        "consistency": 0.5669872981077807
+      },
+      "医药生物": {
+        "mean_accuracy": 25.0,
+        "test_count": 4,
+        "consistency": 0.5669872981077807
+      },
+      "电子": {
+        "mean_accuracy": 25.0,
+        "test_count": 4,
+        "consistency": 0.5669872981077807
+      },
+      "计算机": {
+        "mean_accuracy": 50.0,
+        "test_count": 4,
+        "consistency": 0.5
+      },
+      "通信": {
+        "mean_accuracy": 25.0,
+        "test_count": 4,
+        "consistency": 0.5669872981077807
+      },
+      "机械设备": {
+        "mean_accuracy": 0.0,
+        "test_count": 4,
+        "consistency": 1.0
+      },
+      "电力设备": {
+        "mean_accuracy": 0.0,
+        "test_count": 3,
+        "consistency": 1.0
+      },
+      "汽车": {
+        "mean_accuracy": 0.0,
+        "test_count": 3,
+        "consistency": 1.0
+      },
+      "钢铁": {
+        "mean_accuracy": 0.0,
+        "test_count": 3,
+        "consistency": 1.0
+      },
+      "有色金属": {
+        "mean_accuracy": 0.0,
+        "test_count": 3,
+        "consistency": 1.0
+      },
+      "建筑材料": {
+        "mean_accuracy": 33.333333333333336,
+        "test_count": 3,
+        "consistency": 0.5285954792089683
+      },
+      "建筑装饰": {
+        "mean_accuracy": 0.0,
+        "test_count": 3,
+        "consistency": 1.0
+      },
+      "轻工制造": {
+        "mean_accuracy": 0.0,
+        "test_count": 3,
+        "consistency": 1.0
+      },
+      "交通运输": {
+        "mean_accuracy": 0.0,
+        "test_count": 3,
+        "consistency": 1.0
+      },
+      "公用事业": {
+        "mean_accuracy": 0.0,
+        "test_count": 3,
+        "consistency": 1.0
+      },
+      "农林牧渔": {
+        "mean_accuracy": 0.0,
+        "test_count": 3,
+        "consistency": 1.0
+      },
+      "石油石化": {
+        "mean_accuracy": 0.0,
+        "test_count": 3,
+        "consistency": 1.0
+      },
+      "煤炭": {
+        "mean_accuracy": 0.0,
+        "test_count": 3,
+        "consistency": 1.0
+      },
+      "国防军工": {
+        "mean_accuracy": 0.0,
+        "test_count": 3,
+        "consistency": 1.0
+      },
+      "综合": {
+        "mean_accuracy": 0.0,
+        "test_count": 3,
+        "consistency": 1.0
+      },
+      "传媒": {
+        "mean_accuracy": 0.0,
+        "test_count": 3,
+        "consistency": 1.0
+      },
+      "环保": {
+        "mean_accuracy": 33.333333333333336,
+        "test_count": 3,
+        "consistency": 0.5285954792089683
+      }
+    },
+    "consistency_metrics": {
+      "accuracy_variance": 284.4674556213018,
+      "consistent_performance_ratio": 0.0
+    }
+  },
+  "detailed_results": [
+    {
+      "test_date": "20250601",
+      "prediction_period": 3,
+      "training_period": "20250302-20250531",
+      "prediction_target_period": "20250601-20250604",
+      "training_days": 90,
+      "sectors_analyzed": 26,
+      "overall_accuracy": 40.0,
+      "sector_performance": {
+        "银行": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.016934436592265456,
+          "accuracy": 0.0
+        },
+        "非银金融": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.5403536308837005,
+          "accuracy": 0.0
+        },
+        "房地产": {
+          "predicted_direction": "下跌",
+          "actual_direction": "下跌",
+          "is_correct": true,
+          "confidence": 1.0,
+          "actual_change": -6.299637844885524,
+          "accuracy": 100.0
+        },
+        "食品饮料": {
+          "predicted_direction": "下跌",
+          "actual_direction": "上涨",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 9.288664577067934,
+          "accuracy": 0.0
+        },
+        "家用电器": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.9188673899607237,
+          "accuracy": 0.0
+        },
+        "医药生物": {
+          "predicted_direction": "下跌",
+          "actual_direction": "下跌",
+          "is_correct": true,
+          "confidence": 1.0,
+          "actual_change": -3.21734252971946,
+          "accuracy": 100.0
+        },
+        "电子": {
+          "predicted_direction": "下跌",
+          "actual_direction": "上涨",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 8.647763610701844,
+          "accuracy": 0.0
+        },
+        "计算机": {
+          "predicted_direction": "下跌",
+          "actual_direction": "下跌",
+          "is_correct": true,
+          "confidence": 1.0,
+          "actual_change": -10.322052220521925,
+          "accuracy": 100.0
+        },
+        "通信": {
+          "predicted_direction": "下跌",
+          "actual_direction": "下跌",
+          "is_correct": true,
+          "confidence": 1.0,
+          "actual_change": -3.6000689268003048,
+          "accuracy": 100.0
+        },
+        "机械设备": {
+          "predicted_direction": "下跌",
+          "actual_direction": "上涨",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 4.923624242586456,
+          "accuracy": 0.0
+        }
+      },
+      "accuracy_metrics": {
+        "overall_accuracy": 40.0,
+        "weighted_accuracy": 40.0,
+        "total_predictions": 10,
+        "correct_predictions": 4,
+        "direction_statistics": {
+          "上涨": {
+            "total": 0,
+            "correct": 0,
+            "accuracy": 0
+          },
+          "下跌": {
+            "total": 10,
+            "correct": 4,
+            "accuracy": 40.0
+          },
+          "横盘": {
+            "total": 0,
+            "correct": 0,
+            "accuracy": 0
+          }
+        }
+      }
+    },
+    {
+      "test_date": "20250601",
+      "prediction_period": 5,
+      "training_period": "20250302-20250531",
+      "prediction_target_period": "20250601-20250606",
+      "training_days": 90,
+      "sectors_analyzed": 26,
+      "overall_accuracy": 0.0,
+      "sector_performance": {
+        "银行": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.40618784324502166,
+          "accuracy": 0.0
+        },
+        "非银金融": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 1.016142774635886,
+          "accuracy": 0.0
+        },
+        "房地产": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 1.1684822333234228,
+          "accuracy": 0.0
+        },
+        "食品饮料": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.9349937578381061,
+          "accuracy": 0.0
+        },
+        "家用电器": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.3077814217768744,
+          "accuracy": 0.0
+        },
+        "医药生物": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.6400710509491944,
+          "accuracy": 0.0
+        },
+        "电子": {
+          "predicted_direction": "下跌",
+          "actual_direction": "上涨",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 3.314375875752111,
+          "accuracy": 0.0
+        },
+        "计算机": {
+          "predicted_direction": "下跌",
+          "actual_direction": "上涨",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 2.471803110168684,
+          "accuracy": 0.0
+        },
+        "通信": {
+          "predicted_direction": "下跌",
+          "actual_direction": "上涨",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 5.501444330957112,
+          "accuracy": 0.0
+        },
+        "机械设备": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 1.1063444071248043,
+          "accuracy": 0.0
+        },
+        "电力设备": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 1.2486842065577062,
+          "accuracy": 0.0
+        },
+        "汽车": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.44580947722761877,
+          "accuracy": 0.0
+        },
+        "钢铁": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 1.164200477326963,
+          "accuracy": 0.0
+        },
+        "有色金属": {
+          "predicted_direction": "下跌",
+          "actual_direction": "上涨",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 2.3038476325673645,
+          "accuracy": 0.0
+        },
+        "建筑材料": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 1.1577976545052715,
+          "accuracy": 0.0
+        },
+        "建筑装饰": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 1.1205878493635957,
+          "accuracy": 0.0
+        },
+        "轻工制造": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 1.3207062506967029,
+          "accuracy": 0.0
+        },
+        "交通运输": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.7930602770364374,
+          "accuracy": 0.0
+        },
+        "公用事业": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.09857404638035873,
+          "accuracy": 0.0
+        },
+        "农林牧渔": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.8758573793756013,
+          "accuracy": 0.0
+        },
+        "石油石化": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.9723384878618824,
+          "accuracy": 0.0
+        },
+        "煤炭": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.342197888150176,
+          "accuracy": 0.0
+        },
+        "国防军工": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.07351480230479683,
+          "accuracy": 0.0
+        },
+        "综合": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.8484144052770346,
+          "accuracy": 0.0
+        },
+        "传媒": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 1.203472120052957,
+          "accuracy": 0.0
+        },
+        "环保": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.8602114335735055,
+          "accuracy": 0.0
+        }
+      },
+      "accuracy_metrics": {
+        "overall_accuracy": 0.0,
+        "weighted_accuracy": 0.0,
+        "total_predictions": 26,
+        "correct_predictions": 0,
+        "direction_statistics": {
+          "上涨": {
+            "total": 0,
+            "correct": 0,
+            "accuracy": 0
+          },
+          "下跌": {
+            "total": 26,
+            "correct": 0,
+            "accuracy": 0.0
+          },
+          "横盘": {
+            "total": 0,
+            "correct": 0,
+            "accuracy": 0
+          }
+        }
+      }
+    },
+    {
+      "test_date": "20250608",
+      "prediction_period": 3,
+      "training_period": "20250309-20250607",
+      "prediction_target_period": "20250608-20250611",
+      "training_days": 90,
+      "sectors_analyzed": 26,
+      "overall_accuracy": 0.0,
+      "sector_performance": {
+        "银行": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.7933157144623303,
+          "accuracy": 0.0
+        },
+        "非银金融": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.7685853331095827,
+          "accuracy": 0.0
+        },
+        "房地产": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.27886640805126706,
+          "accuracy": 0.0
+        },
+        "食品饮料": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.5028284098051665,
+          "accuracy": 0.0
+        },
+        "家用电器": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.1684342006590672,
+          "accuracy": 0.0
+        },
+        "医药生物": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.08222682804048048,
+          "accuracy": 0.0
+        },
+        "电子": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -1.2975180575984697,
+          "accuracy": 0.0
+        },
+        "计算机": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -1.4910239325917727,
+          "accuracy": 0.0
+        },
+        "通信": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -1.7046539026043601,
+          "accuracy": 0.0
+        },
+        "机械设备": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.7291704771311187,
+          "accuracy": 0.0
+        },
+        "电力设备": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.19994502620123153,
+          "accuracy": 0.0
+        },
+        "汽车": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 1.018381842364858,
+          "accuracy": 0.0
+        },
+        "钢铁": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.5636941631435766,
+          "accuracy": 0.0
+        },
+        "有色金属": {
+          "predicted_direction": "下跌",
+          "actual_direction": "上涨",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 2.3121387283236903,
+          "accuracy": 0.0
+        },
+        "建筑材料": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.6514887438106107,
+          "accuracy": 0.0
+        },
+        "建筑装饰": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.3434752651183452,
+          "accuracy": 0.0
+        },
+        "轻工制造": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.12678871062008892,
+          "accuracy": 0.0
+        },
+        "交通运输": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.39558487807283377,
+          "accuracy": 0.0
+        },
+        "公用事业": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.049586499025091234,
+          "accuracy": 0.0
+        },
+        "农林牧渔": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 1.9275668820625276,
+          "accuracy": 0.0
+        },
+        "石油石化": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.4319488355473621,
+          "accuracy": 0.0
+        },
+        "煤炭": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.4425553778068361,
+          "accuracy": 0.0
+        },
+        "国防军工": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -1.6399543006365196,
+          "accuracy": 0.0
+        },
+        "综合": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.11356852695797767,
+          "accuracy": 0.0
+        },
+        "传媒": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 1.7508524076018872,
+          "accuracy": 0.0
+        },
+        "环保": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.5296873189545371,
+          "accuracy": 0.0
+        }
+      },
+      "accuracy_metrics": {
+        "overall_accuracy": 0.0,
+        "weighted_accuracy": 0.0,
+        "total_predictions": 26,
+        "correct_predictions": 0,
+        "direction_statistics": {
+          "上涨": {
+            "total": 0,
+            "correct": 0,
+            "accuracy": 0
+          },
+          "下跌": {
+            "total": 26,
+            "correct": 0,
+            "accuracy": 0.0
+          },
+          "横盘": {
+            "total": 0,
+            "correct": 0,
+            "accuracy": 0
+          }
+        }
+      }
+    },
+    {
+      "test_date": "20250608",
+      "prediction_period": 5,
+      "training_period": "20250309-20250607",
+      "prediction_target_period": "20250608-20250613",
+      "training_days": 90,
+      "sectors_analyzed": 26,
+      "overall_accuracy": 23.076923076923077,
+      "sector_performance": {
+        "银行": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.16584753689584222,
+          "accuracy": 0.0
+        },
+        "非银金融": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.034122056273431074,
+          "accuracy": 0.0
+        },
+        "房地产": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -1.8181093853485688,
+          "accuracy": 0.0
+        },
+        "食品饮料": {
+          "predicted_direction": "下跌",
+          "actual_direction": "下跌",
+          "is_correct": true,
+          "confidence": 1.0,
+          "actual_change": -3.9561000949978284,
+          "accuracy": 100.0
+        },
+        "家用电器": {
+          "predicted_direction": "下跌",
+          "actual_direction": "下跌",
+          "is_correct": true,
+          "confidence": 1.0,
+          "actual_change": -3.298424241277268,
+          "accuracy": 100.0
+        },
+        "医药生物": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.8785089200416341,
+          "accuracy": 0.0
+        },
+        "电子": {
+          "predicted_direction": "下跌",
+          "actual_direction": "下跌",
+          "is_correct": true,
+          "confidence": 1.0,
+          "actual_change": -2.481489120112792,
+          "accuracy": 100.0
+        },
+        "计算机": {
+          "predicted_direction": "下跌",
+          "actual_direction": "下跌",
+          "is_correct": true,
+          "confidence": 1.0,
+          "actual_change": -3.3546962087175154,
+          "accuracy": 100.0
+        },
+        "通信": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -1.8586651046157148,
+          "accuracy": 0.0
+        },
+        "机械设备": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -1.8710904634744154,
+          "accuracy": 0.0
+        },
+        "电力设备": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -1.238388262798392,
+          "accuracy": 0.0
+        },
+        "汽车": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.879934599068524,
+          "accuracy": 0.0
+        },
+        "钢铁": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.734581513266011,
+          "accuracy": 0.0
+        },
+        "有色金属": {
+          "predicted_direction": "下跌",
+          "actual_direction": "上涨",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 3.3267828217630497,
+          "accuracy": 0.0
+        },
+        "建筑材料": {
+          "predicted_direction": "下跌",
+          "actual_direction": "下跌",
+          "is_correct": true,
+          "confidence": 1.0,
+          "actual_change": -2.8191033678809347,
+          "accuracy": 100.0
+        },
+        "建筑装饰": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -1.5945955747123444,
+          "accuracy": 0.0
+        },
+        "轻工制造": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -1.829716634301753,
+          "accuracy": 0.0
+        },
+        "交通运输": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.022873955534813868,
+          "accuracy": 0.0
+        },
+        "公用事业": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.11556175620251463,
+          "accuracy": 0.0
+        },
+        "农林牧渔": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.09822930678697936,
+          "accuracy": 0.0
+        },
+        "石油石化": {
+          "predicted_direction": "下跌",
+          "actual_direction": "上涨",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 2.7680909670678715,
+          "accuracy": 0.0
+        },
+        "煤炭": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -1.0415815224372158,
+          "accuracy": 0.0
+        },
+        "国防军工": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.48114901256731785,
+          "accuracy": 0.0
+        },
+        "综合": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": -0.20092893231024528,
+          "accuracy": 0.0
+        },
+        "传媒": {
+          "predicted_direction": "下跌",
+          "actual_direction": "横盘",
+          "is_correct": false,
+          "confidence": 1.0,
+          "actual_change": 0.4977772662532798,
+          "accuracy": 0.0
+        },
+        "环保": {
+          "predicted_direction": "下跌",
+          "actual_direction": "下跌",
+          "is_correct": true,
+          "confidence": 1.0,
+          "actual_change": -2.003983690044646,
+          "accuracy": 100.0
+        }
+      },
+      "accuracy_metrics": {
+        "overall_accuracy": 23.076923076923077,
+        "weighted_accuracy": 23.076923076923077,
+        "total_predictions": 26,
+        "correct_predictions": 6,
+        "direction_statistics": {
+          "上涨": {
+            "total": 0,
+            "correct": 0,
+            "accuracy": 0
+          },
+          "下跌": {
+            "total": 26,
+            "correct": 6,
+            "accuracy": 23.076923076923077
+          },
+          "横盘": {
+            "total": 0,
+            "correct": 0,
+            "accuracy": 0
+          }
+        }
+      }
+    }
+  ],
+  "test_periods": [
+    [
+      "20250601",
+      3
+    ],
+    [
+      "20250601",
+      5
+    ],
+    [
+      "20250608",
+      3
+    ],
+    [
+      "20250608",
+      5
+    ]
+  ]
+}

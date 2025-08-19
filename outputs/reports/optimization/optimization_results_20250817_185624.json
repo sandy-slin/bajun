@@ -1,0 +1,37 @@
+{
+  "timestamp": "2025-08-17T18:56:24.468752",
+  "optimized_parameters": {
+    "momentum_weight": 0.9,
+    "relative_strength_weight": 0.09999999999999998,
+    "lookback_days": 25,
+    "prediction_threshold": 50,
+    "stock_selection_top_n": 4,
+    "volume_weight": 0.5,
+    "price_weight": 0.5
+  },
+  "validation_results": {
+    "baseline": {
+      "sector_accuracy": 0.64,
+      "stock_win_rate": 0.4,
+      "portfolio_return": -1.19
+    },
+    "optimized": {
+      "sector_accuracy": 0.6900000000000001,
+      "stock_win_rate": 0.5,
+      "portfolio_return": 0.31000000000000005
+    },
+    "improvement_summary": {
+      "individual_improvements": {
+        "sector_accuracy": 7.812500000000007,
+        "stock_win_rate": 24.999999999999993,
+        "portfolio_return": 126.05042016806722
+      },
+      "overall_improvement": 52.95430672268907
+    }
+  },
+  "optimization_metadata": {
+    "method": "grid_search_with_domain_knowledge",
+    "optimization_target": "comprehensive_performance",
+    "validation_method": "historical_simulation"
+  }
+}

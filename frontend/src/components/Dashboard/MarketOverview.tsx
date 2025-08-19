@@ -14,30 +14,31 @@ interface MarketOverviewProps {
 }
 
 const MarketOverview: React.FC<MarketOverviewProps> = ({ marketData }) => {
-  const mockMarketData: MarketData = {
+  // 备用数据，仅在WebSocket连接失败时使用
+  const fallbackMarketData: MarketData = {
     timestamp: new Date().toISOString(),
     market_indices: {
       sh_composite: {
-        value: 3150.25,
-        change: 12.5,
-        change_pct: 0.4
+        value: 3700.0,  // 更新为合理的当前水平
+        change: 0.0,
+        change_pct: 0.0
       },
       sz_component: {
-        value: 11250.80,
-        change: -25.3,
-        change_pct: -0.22
+        value: 11200.0,  // 更新为合理的当前水平
+        change: 0.0,
+        change_pct: 0.0
       }
     },
     hot_stocks: [
-      { code: '000001', name: '平安银行', price: 12.08, change_pct: 0.8 },
-      { code: '600519', name: '贵州茅台', price: 1680.50, change_pct: -0.5 },
-      { code: '300750', name: '宁德时代', price: 185.20, change_pct: 1.2 },
-      { code: '000858', name: '五粮液', price: 158.30, change_pct: -0.3 },
-      { code: '002415', name: '海康威视', price: 35.45, change_pct: 0.6 }
+      { code: '000001', name: '平安银行', price: 12.08, change_pct: 0.0 },
+      { code: '600519', name: '贵州茅台', price: 1680.50, change_pct: 0.0 },
+      { code: '300750', name: '宁德时代', price: 185.20, change_pct: 0.0 },
+      { code: '000858', name: '五粮液', price: 158.30, change_pct: 0.0 },
+      { code: '002415', name: '海康威视', price: 35.45, change_pct: 0.0 }
     ]
   };
 
-  const data = marketData || mockMarketData;
+  const data = marketData || fallbackMarketData;
 
   const hotStockColumns = [
     {
