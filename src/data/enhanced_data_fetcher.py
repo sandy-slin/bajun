@@ -72,15 +72,18 @@ class EnhancedDataFetcher:
                                 'data_quality': 'real'
                             }
                         else:
-                            northbound_analysis = self._generate_mock_northbound_data(sector_name)
+                            self.logger.error("北向资金数据处理失败")
+                            raise RuntimeError("北向资金数据处理失败，无法获取真实数据")
                     else:
-                        northbound_analysis = self._generate_mock_northbound_data(sector_name)
+                        self.logger.error("北向资金数据获取失败")
+                        raise RuntimeError("北向资金数据获取失败，请检查数据源配置")
                         
                 except Exception as e:
-                    self.logger.warning(f"获取北向资金数据失败: {e}, 使用模拟数据")
-                    northbound_analysis = self._generate_mock_northbound_data(sector_name)
+                    self.logger.error(f"获取北向资金数据失败: {e}")
+                    raise RuntimeError(f"获取北向资金数据失败: {e}")
             else:
-                northbound_analysis = self._generate_mock_northbound_data(sector_name)
+                self.logger.error("AKShare不可用，无法获取北向资金数据")
+                raise RuntimeError("AKShare不可用，无法获取北向资金数据")
                 
             # 缓存数据
             await self.cache_manager.set(cache_key, northbound_analysis)
@@ -88,7 +91,7 @@ class EnhancedDataFetcher:
             
         except Exception as e:
             self.logger.error(f"获取北向资金数据异常: {e}")
-            return self._generate_mock_northbound_data(sector_name)
+            raise RuntimeError(f"获取北向资金数据异常: {e}")
             
     async def get_margin_trading_data(self, sector_name: str, 
                                     date_range: Tuple[str, str]) -> Dict[str, Any]:
@@ -134,22 +137,25 @@ class EnhancedDataFetcher:
                                 'data_quality': 'real'
                             }
                         else:
-                            margin_analysis = self._generate_mock_margin_data(sector_name)
+                            self.logger.error("融资融券数据处理失败")
+                            raise RuntimeError("融资融券数据处理失败，无法获取真实数据")
                     else:
-                        margin_analysis = self._generate_mock_margin_data(sector_name)
+                        self.logger.error("融资融券数据获取失败")
+                        raise RuntimeError("融资融券数据获取失败，请检查数据源配置")
                         
                 except Exception as e:
-                    self.logger.warning(f"获取融资融券数据失败: {e}, 使用模拟数据")
-                    margin_analysis = self._generate_mock_margin_data(sector_name)
+                    self.logger.error(f"获取融资融券数据失败: {e}")
+                    raise RuntimeError(f"获取融资融券数据失败: {e}")
             else:
-                margin_analysis = self._generate_mock_margin_data(sector_name)
+                self.logger.error("AKShare不可用，无法获取融资融券数据")
+                raise RuntimeError("AKShare不可用，无法获取融资融券数据")
                 
             await self.cache_manager.set(cache_key, margin_analysis)
             return margin_analysis
             
         except Exception as e:
             self.logger.error(f"获取融资融券数据异常: {e}")
-            return self._generate_mock_margin_data(sector_name)
+            raise RuntimeError(f"获取融资融券数据异常: {e}")
             
     async def get_market_sentiment_data(self, date_range: Tuple[str, str]) -> Dict[str, Any]:
         """
@@ -204,17 +210,18 @@ class EnhancedDataFetcher:
                     sentiment_data['data_quality'] = 'real'
                     
                 except Exception as e:
-                    self.logger.warning(f"获取市场情绪数据失败: {e}, 使用模拟数据")
-                    sentiment_data = self._generate_mock_sentiment_data()
+                    self.logger.error(f"获取市场情绪数据失败: {e}")
+                    raise RuntimeError(f"获取市场情绪数据失败: {e}")
             else:
-                sentiment_data = self._generate_mock_sentiment_data()
+                self.logger.error("AKShare不可用，无法获取市场情绪数据")
+                raise RuntimeError("AKShare不可用，无法获取市场情绪数据")
                 
             await self.cache_manager.set(cache_key, sentiment_data)
             return sentiment_data
             
         except Exception as e:
             self.logger.error(f"获取市场情绪数据异常: {e}")
-            return self._generate_mock_sentiment_data()
+            raise RuntimeError(f"获取市场情绪数据异常: {e}")
             
     async def get_macro_environment_data(self, date_range: Tuple[str, str]) -> Dict[str, Any]:
         """
@@ -267,17 +274,18 @@ class EnhancedDataFetcher:
                     macro_data['data_quality'] = 'real'
                     
                 except Exception as e:
-                    self.logger.warning(f"获取宏观数据失败: {e}, 使用模拟数据")
-                    macro_data = self._generate_mock_macro_data()
+                    self.logger.error(f"获取宏观数据失败: {e}")
+                    raise RuntimeError(f"获取宏观数据失败: {e}")
             else:
-                macro_data = self._generate_mock_macro_data()
+                self.logger.error("AKShare不可用，无法获取宏观数据")
+                raise RuntimeError("AKShare不可用，无法获取宏观数据")
                 
             await self.cache_manager.set(cache_key, macro_data)
             return macro_data
             
         except Exception as e:
             self.logger.error(f"获取宏观环境数据异常: {e}")
-            return self._generate_mock_macro_data()
+            raise RuntimeError(f"获取宏观环境数据异常: {e}")
             
     def _analyze_capital_trend(self, flow_data: List[float]) -> str:
         """分析资金流向趋势"""
@@ -398,77 +406,3 @@ class EnhancedDataFetcher:
         except:
             return "balanced"
             
-    # 模拟数据生成方法
-    def _generate_mock_northbound_data(self, sector_name: str) -> Dict[str, Any]:
-        """生成模拟北向资金数据"""
-        import random
-        
-        # 基于板块特征生成不同的资金流向倾向
-        sector_bias = {
-            "银行": -0.2, "医药生物": 0.3, "电子": 0.4, "计算机": 0.5,
-            "食品饮料": 0.1, "家用电器": 0.2, "汽车": 0.1
-        }.get(sector_name, 0.0)
-        
-        base_flow = random.uniform(-100, 100) + sector_bias * 50
-        
-        return {
-            'total_net_inflow': round(base_flow * 14, 2),  # 14天总计
-            'avg_daily_inflow': round(base_flow, 2),
-            'max_single_day_inflow': round(base_flow + random.uniform(20, 50), 2),
-            'min_single_day_inflow': round(base_flow - random.uniform(20, 50), 2),
-            'positive_days': random.randint(5, 10),
-            'negative_days': random.randint(4, 9),
-            'flow_trend': "inflow" if base_flow > 10 else "outflow" if base_flow < -10 else "neutral",
-            'data_quality': 'mock'
-        }
-        
-    def _generate_mock_margin_data(self, sector_name: str) -> Dict[str, Any]:
-        """生成模拟融资融券数据"""
-        import random
-        
-        base_balance = random.uniform(1000, 10000)  # 百万元
-        
-        return {
-            'financing_balance': round(base_balance, 2),
-            'financing_change_5d': round(random.uniform(-15, 15), 2),
-            'margin_lending_balance': round(base_balance * 0.1, 2),
-            'net_financing_ratio': round(random.uniform(-20, 80), 2),
-            'margin_activity_level': random.choice(["low", "normal", "high"]),
-            'data_quality': 'mock'
-        }
-        
-    def _generate_mock_sentiment_data(self) -> Dict[str, Any]:
-        """生成模拟市场情绪数据"""
-        import random
-        
-        sentiment_index = random.uniform(20, 80)
-        
-        return {
-            'fear_greed_index': round(sentiment_index, 1),
-            'recent_ipo_count': random.randint(3, 15),
-            'limit_up_count': random.randint(10, 50),
-            'comprehensive_sentiment_index': round(sentiment_index, 1),
-            'sentiment_level': "optimistic" if sentiment_index > 65 else "neutral" if sentiment_index > 35 else "pessimistic",
-            'data_quality': 'mock'
-        }
-        
-    def _generate_mock_macro_data(self) -> Dict[str, Any]:
-        """生成模拟宏观环境数据"""
-        import random
-        
-        hs300_return = random.uniform(-8, 8)
-        cyb_return = random.uniform(-10, 12)
-        kc50_return = random.uniform(-12, 15)
-        
-        return {
-            'hs300_return_5d': round(hs300_return, 2),
-            'hs300_volatility': round(random.uniform(1, 4), 2),
-            'cyb_return_5d': round(cyb_return, 2),
-            'kc50_return_5d': round(kc50_return, 2),
-            'market_style': self._determine_market_style({
-                'hs300_return_5d': hs300_return,
-                'cyb_return_5d': cyb_return,
-                'kc50_return_5d': kc50_return
-            }),
-            'data_quality': 'mock'
-        }

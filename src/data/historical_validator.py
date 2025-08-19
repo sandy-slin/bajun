@@ -357,23 +357,10 @@ class HistoricalValidator:
                 
             self.logger.info(f"开始验证历史预测，测试板块: {sectors_to_test}")
             
-            # 生成模拟的历史预测结果
-            historical_predictions = {}
-            for sector_name in sectors_to_test:
-                historical_predictions[sector_name] = {
-                    'trend_prediction': self._generate_mock_prediction(sector_name)['trend'],
-                    'expected_return': self._generate_mock_prediction(sector_name)['return'],
-                    'recommendation': self._generate_mock_prediction(sector_name)['recommendation'],
-                    'comprehensive_score': self._generate_mock_prediction(sector_name)['score']
-                }
+            # 禁止使用模拟数据进行历史验证
+            self.logger.error("历史验证需要真实数据，不允许使用模拟数据")
+            raise RuntimeError("历史验证功能需要真实历史数据，请配置数据源后重试")
                 
-            # 生成模拟的实际表现
-            actual_performance = {}
-            for sector_name in sectors_to_test:
-                actual_performance[sector_name] = self._generate_mock_actual_performance(sector_name)
-                
-            # 对比结果
-            comparison = self.compare_prediction_vs_actual(historical_predictions, actual_performance)
             
             return {
                 'validation_type': 'Historical Simulation',
@@ -389,74 +376,3 @@ class HistoricalValidator:
             self.logger.error(f"历史预测验证失败: {e}")
             return {'error': str(e)}
             
-    def _generate_mock_prediction(self, sector_name: str) -> Dict[str, Any]:
-        """生成模拟预测（基于板块特征）"""
-        import random
-        
-        # 根据板块名称设置不同的特征
-        sector_characteristics = {
-            "银行": {"volatility": 0.5, "growth_tendency": 0.3},
-            "医药生物": {"volatility": 0.8, "growth_tendency": 0.7},
-            "电子": {"volatility": 0.9, "growth_tendency": 0.6},
-            "计算机": {"volatility": 0.9, "growth_tendency": 0.8},
-            "食品饮料": {"volatility": 0.4, "growth_tendency": 0.4}
-        }
-        
-        char = sector_characteristics.get(sector_name, {"volatility": 0.6, "growth_tendency": 0.5})
-        
-        # 生成预测
-        expected_return = random.uniform(-10, 15) * char["growth_tendency"]
-        
-        if expected_return > 5:
-            trend = "上涨"
-            recommendation = "Buy"
-            score = random.uniform(70, 90)
-        elif expected_return > 0:
-            trend = "震荡上涨"
-            recommendation = "Hold+"
-            score = random.uniform(55, 75)
-        elif expected_return > -3:
-            trend = "震荡"
-            recommendation = "Hold"
-            score = random.uniform(45, 65)
-        else:
-            trend = "下跌"
-            recommendation = "Avoid"
-            score = random.uniform(20, 45)
-            
-        return {
-            'trend': trend,
-            'return': round(expected_return, 2),
-            'recommendation': recommendation,
-            'score': round(score, 1)
-        }
-        
-    def _generate_mock_actual_performance(self, sector_name: str) -> Dict[str, Any]:
-        """生成模拟实际表现"""
-        import random
-        
-        # 基于预测生成相关的实际表现（添加一些随机误差）
-        pred = self._generate_mock_prediction(sector_name)
-        expected_return = pred['return']
-        
-        # 添加随机误差
-        actual_return = expected_return + random.uniform(-8, 8)
-        
-        # 确定实际趋势
-        if actual_return > 2:
-            trend = "上涨"
-        elif actual_return < -2:
-            trend = "下跌"
-        else:
-            trend = "震荡"
-            
-        return {
-            'total_return': round(actual_return, 2),
-            'volatility': round(random.uniform(1, 6), 2),
-            'max_gain': round(actual_return + random.uniform(2, 8), 2),
-            'max_loss': round(actual_return - random.uniform(2, 8), 2),
-            'trend': trend,
-            'trading_days': 14,
-            'start_price': 100.0,
-            'end_price': round(100 * (1 + actual_return/100), 2)
-        }

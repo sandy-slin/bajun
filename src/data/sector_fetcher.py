@@ -136,17 +136,9 @@ class SectorFetcher:
         else:
             self.logger.warning("AKShare不可用")
         
-        # 只有在完全无法获取真实数据时才使用模拟数据
-        self.logger.warning("真实数据获取失败，使用模拟数据作为备选方案")
-        sectors_data = await self._get_mock_sectors_data(date_range)
-        
-        # 缓存模拟数据
-        try:
-            await self.cache_manager.set(cache_key, sectors_data)
-        except Exception as e:
-            self.logger.warning(f"缓存模拟数据失败: {e}")
-            
-        return sectors_data
+        # 禁止使用模拟数据，无法获取真实数据时直接报错
+        self.logger.error("无法获取真实板块数据，系统拒绝使用模拟数据")
+        raise RuntimeError("无法获取真实板块数据，请检查AKShare连接或数据源配置")
     
     async def _fetch_all_sectors_data_akshare(self, date_range: Tuple[str, str]) -> Optional[pd.DataFrame]:
         """一次性获取所有申万一级行业数据"""
@@ -261,48 +253,6 @@ class SectorFetcher:
             self.logger.error(f"计算技术指标失败: {e}")
             return df
         
-    async def _get_mock_sectors_data(self, date_range: Tuple[str, str]) -> Dict[str, pd.DataFrame]:
-        """生成模拟板块数据"""
-        self.logger.info("生成模拟板块数据用于测试")
-        
-        import numpy as np
-        
-        start_date = datetime.strptime(date_range[0], "%Y%m%d")
-        end_date = datetime.strptime(date_range[1], "%Y%m%d")
-        date_range_obj = pd.date_range(start=start_date, end=end_date, freq='D')
-        
-        sectors_data = {}
-        
-        for sector_name in list(self.sw_sectors.keys())[:10]:  # 限制为前10个板块
-            # 生成随机走势数据
-            np.random.seed(hash(sector_name) % 1000)  # 使用板块名生成固定种子
-            
-            n_days = len(date_range_obj)
-            returns = np.random.normal(0.002, 0.03, n_days)  # 日收益率
-            prices = [100]  # 起始价格100
-            
-            for ret in returns[1:]:
-                prices.append(prices[-1] * (1 + ret))
-                
-            volumes = np.random.uniform(1000000, 10000000, n_days)
-            
-            df = pd.DataFrame({
-                'date': date_range_obj,
-                'open': [p * np.random.uniform(0.98, 1.02) for p in prices],
-                'high': [p * np.random.uniform(1.01, 1.05) for p in prices], 
-                'low': [p * np.random.uniform(0.95, 0.99) for p in prices],
-                'close': prices,
-                'volume': volumes,
-                'amount': [p * v for p, v in zip(prices, volumes)]
-            })
-            
-            # 计算涨跌幅
-            df['pct_change'] = df['close'].pct_change() * 100
-            
-            df = self._calculate_basic_indicators_from_close(df)
-            sectors_data[sector_name] = df
-            
-        return sectors_data
         
     async def get_sector_stocks(self, sector_name: str) -> List[Dict[str, str]]:
         """获取板块内个股列表"""
@@ -341,27 +291,9 @@ class SectorFetcher:
             except Exception as e:
                 self.logger.error(f"获取{sector_name}成分股失败: {e}")
                 
-        # 只有在完全无法获取真实数据时才使用模拟数据
-        self.logger.warning(f"真实成分股数据获取失败，为{sector_name}板块生成模拟数据")
-        mock_stocks = [
-            f"{sector_name}_股票{i:02d}" for i in range(1, 21)
-        ]
-        stocks = [
-            {
-                'code': f"00{i:04d}",
-                'name': name,
-                'sector': sector_name
-            }
-            for i, name in enumerate(mock_stocks, 1)
-        ]
-        
-        # 缓存模拟数据
-        try:
-            await self.cache_manager.set(cache_key, stocks)
-        except Exception as e:
-            self.logger.warning(f"缓存模拟成分股数据失败: {e}")
-            
-        return stocks
+        # 禁止使用模拟数据，无法获取真实数据时直接报错
+        self.logger.error(f"无法获取{sector_name}板块真实成分股数据，系统拒绝使用模拟数据")
+        raise RuntimeError(f"无法获取{sector_name}板块成分股数据，请检查AKShare连接或数据源配置")
         
     def get_supported_sectors(self) -> List[str]:
         """获取支持的板块列表"""
