@@ -10,6 +10,7 @@ from typing import Dict, List, Set
 import asyncio
 import json
 import logging
+import pandas as pd
 from datetime import datetime
 
 try:
@@ -297,8 +298,8 @@ class WebSocketManager:
             raise RuntimeError("AKShare不可用，无法获取板块数据")
         
         try:
-            # 获取申万一级行业指数
-            sw_index = ak.sw_index_spot()
+            # 获取申万行业指数数据（使用新的API）
+            sw_index = ak.index_analysis_daily_sw()
             if sw_index.empty:
                 raise RuntimeError("无法获取申万行业指数数据")
             
@@ -311,7 +312,7 @@ class WebSocketManager:
                     'name': sector['指数名称'],
                     'code': sector['指数代码'],
                     'change_pct': float(sector['涨跌幅']),
-                    'latest_price': float(sector['最新价']),
+                    'latest_price': float(sector['收盘指数']),
                     'trend': 'up' if sector['涨跌幅'] > 0 else 'down'
                 })
             

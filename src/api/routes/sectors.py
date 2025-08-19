@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List, Dict, Optional
 import logging
 import asyncio
+import pandas as pd
 from datetime import datetime, timedelta
 
 from ..models import *
@@ -53,8 +54,8 @@ class SectorAnalysisService:
             raise RuntimeError("AKShare不可用，无法进行板块分析")
         
         try:
-            # 获取申万一级行业指数实时数据
-            sw_index = ak.sw_index_spot()
+            # 获取申万行业指数数据（使用新的API）
+            sw_index = ak.index_analysis_daily_sw()
             if sw_index.empty:
                 raise RuntimeError("无法获取申万行业指数数据")
             
@@ -65,31 +66,33 @@ class SectorAnalysisService:
                 sector_name = row['指数名称'].replace('申万', '').replace('指数', '')
                 sector_code = row['指数代码']
                 
-                # 基于真实数据计算评分
+                # 基于真实数据计算评分（适配新API格式）
                 change_pct = float(row['涨跌幅'])
-                volume_ratio = float(row['成交量']) / float(row['成交额']) if row['成交额'] > 0 else 0
+                turnover_ratio = float(row['换手率']) if pd.notna(row['换手率']) else 0
+                pe_ratio = float(row['市盈率']) if pd.notna(row['市盈率']) else 0
                 
                 # 计算综合评分 (基于真实数据)
                 momentum_score = 50 + change_pct * 10  # 以涨跌幅为基础
-                volume_score = min(volume_ratio * 100, 100)  # 成交活跃度
-                price_score = 50 + (float(row['最新价']) - float(row['开盘'])) / float(row['开盘']) * 100 if row['开盘'] > 0 else 50
+                volume_score = min(turnover_ratio * 5, 100)  # 换手率活跃度
+                value_score = 50 + (20 - pe_ratio) / 20 * 50 if pe_ratio > 0 else 50  # 估值合理性
                 
-                composite_score = momentum_score * 0.6 + volume_score * 0.2 + price_score * 0.2
+                composite_score = momentum_score * 0.5 + volume_score * 0.3 + value_score * 0.2
                 
                 sector_info = {
                     'name': sector_name,
                     'code': sector_code,
                     'score': round(composite_score, 2),
                     'change_pct': round(change_pct, 2),
-                    'latest_price': float(row['最新价']),
-                    'volume': int(row['成交量']),
-                    'turnover': float(row['成交额']),
-                    'open_price': float(row['开盘']),
-                    'high_price': float(row['最高']),
-                    'low_price': float(row['最低']),
+                    'latest_price': float(row['收盘指数']),
+                    'volume': int(row['成交量']) if pd.notna(row['成交量']) else 0,
+                    'turnover_rate': round(turnover_ratio, 2),
+                    'pe_ratio': round(pe_ratio, 2),
+                    'pb_ratio': round(float(row['市净率']), 2) if pd.notna(row['市净率']) else 0,
+                    'market_cap': float(row['流通市值']) if pd.notna(row['流通市值']) else 0,
                     'momentum_score': round(momentum_score, 2),
                     'volume_score': round(volume_score, 2),
-                    'risk_level': self._assess_risk_level(change_pct, volume_ratio),
+                    'value_score': round(value_score, 2),
+                    'risk_level': self._assess_risk_level(change_pct, turnover_ratio),
                     'recommendation': self._get_recommendation(composite_score, change_pct)
                 }
                 
@@ -129,7 +132,7 @@ class SectorAnalysisService:
             logger.error(f"板块分析失败: {e}")
             raise RuntimeError(f"板块分析失败: {e}")
     
-    def _assess_risk_level(self, change_pct: float, volume_ratio: float) -> str:
+    def _assess_risk_level(self, change_pct: float, turnover_ratio: float) -> str:
         """评估风险水平"""
         if abs(change_pct) > 5:
             return "high"
