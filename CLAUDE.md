@@ -14,6 +14,16 @@ This is an A-share intelligent trading decision platform designed specifically f
 ## Code Rules
 Please refer to configs/prompts/arch.md
 
+### 🚫 严格禁止模拟数据
+**CRITICAL REQUIREMENT**: 整个工程严格禁止使用任何模拟数据或假数据
+- **股票数据**: 必须使用真实的A股实时/历史数据
+- **板块数据**: 必须使用真实的申万行业指数数据  
+- **指数数据**: 必须使用真实的上证综指、深证成指等实际数据
+- **价格数据**: 必须反映真实市场价格，严禁硬编码价格
+- **数据源要求**: 优先使用AKShare、TuShare等可靠数据源
+- **数据验证**: 每次数据获取后必须验证真实性和时效性
+- **提交检查**: 每次提交前必须确保CLAUDE.md要求与功能完全对齐
+
 ## Development Workflow & Documentation Standards
 
 ### User Requirement Management

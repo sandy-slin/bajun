@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./scripts/setup/quick_start.sh:*)",
+      "Bash(./scripts/setup/install_dependencies.sh:*)",
+      "Bash(source:*)",
+      "Bash(python3 -m pip:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(./scripts/deployment/start_services.sh:*)",
+      "Bash(node:*)",
+      "Bash(npm --version)",
+      "Bash(npm install)",
+      "Bash(npm cache clean:*)",
+      "Bash(npm install:*)",
+      "Bash(bash:*)",
+      "Bash(chmod:*)",
+      "Bash(cat:*)",
+      "Bash(./venv/bin/pip install pandas)",
+      "Bash(./venv/bin/python:*)",
+      "Bash(npm start)",
+      "Bash(curl:*)",
+      "Bash(./venv/bin/pip install:*)",
+      "Bash(find:*)",
+      "Bash(sed:*)",
+      "Bash(scripts/deployment/stop_services.sh:*)",
+      "Bash(scripts/deployment/start_services.sh:*)",
+      "Bash(open http://localhost:3000)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "defaultMode": "acceptEdits"
+  }
+}

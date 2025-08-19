@@ -17,12 +17,6 @@ echo "📍 项目根目录: $PROJECT_ROOT"
 # 1. 检查前置条件
 echo "🔍 检查前置条件..."
 
-if [ ! -d "venv" ]; then
-    echo "❌ Python虚拟环境不存在，请先运行:"
-    echo "   ./install_dependencies.sh"
-    exit 1
-fi
-
 if [ ! -d "frontend/node_modules" ]; then
     echo "❌ 前端依赖不存在，请先运行:"
     echo "   ./install_dependencies.sh"
@@ -62,7 +56,7 @@ fi
 # 4. 启动后端服务
 echo ""
 echo "🔧 启动后端服务 (端口8000)..."
-source venv/bin/activate
+source "$PROJECT_ROOT/venv/bin/activate"
 export PYTHONPATH="$PROJECT_ROOT:$PROJECT_ROOT/tests/functional:$PROJECT_ROOT/src/analysis:$PYTHONPATH"
 
 cd src/api

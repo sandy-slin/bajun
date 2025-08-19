@@ -27,11 +27,6 @@ mkdir -p logs
 # 检查前置条件
 echo -e "${YELLOW}🔍 检查前置条件...${NC}"
 
-if [ ! -d "venv" ]; then
-    echo -e "${RED}❌ Python虚拟环境不存在${NC}"
-    exit 1
-fi
-
 if [ ! -d "configs/ui_checker" ]; then
     echo -e "${RED}❌ UI检查器配置不存在${NC}"
     exit 1
@@ -45,7 +40,7 @@ fi
 echo -e "${GREEN}✅ 前置条件检查通过${NC}"
 
 # 激活虚拟环境
-source venv/bin/activate
+source "$PROJECT_ROOT/venv/bin/activate"
 
 # 检查前端服务是否运行
 echo -e "${YELLOW}🌐 检查前端服务状态...${NC}"

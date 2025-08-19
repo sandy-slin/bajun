@@ -26,7 +26,7 @@ fi
 
 # 激活虚拟环境
 echo "🔄 激活虚拟环境..."
-source venv/bin/activate
+source "$PROJECT_ROOT/venv/bin/activate"
 
 # 升级pip
 echo "⬆️  升级pip..."
@@ -64,7 +64,7 @@ fi
 echo "📝 创建启动脚本..."
 cat > run.sh << EOF
 #!/bin/bash
-source venv/bin/activate
+source "$PROJECT_ROOT/venv/bin/activate"
 python src/main.py \$@
 EOF
 
@@ -87,5 +87,5 @@ echo "  ./run.sh -s 000001       # 分析特定股票"
 echo "  ./run.sh -v              # 详细输出模式"
 echo ""
 echo "测试命令："
-echo "  source venv/bin/activate"
+echo "  source "$PROJECT_ROOT/venv/bin/activate""
 echo "  python -m pytest tests/ -v --cov=src"

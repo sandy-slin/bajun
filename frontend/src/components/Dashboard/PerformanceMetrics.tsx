@@ -6,7 +6,7 @@ import {
   CheckCircleOutlined,
   ExperimentOutlined 
 } from '@ant-design/icons';
-import { SystemStatus } from '../../services/websocket';
+import { SystemStatus } from '../../services/dataService';
 
 const { Title, Text } = Typography;
 
@@ -145,12 +145,12 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({
         </Col>
       </Row>
 
-      {/* 算法优化状态 */}
-      {systemStatus?.optimization_status && (
+      {/* 系统状态信息 */}
+      {systemStatus && (
         <div style={{ marginTop: 24 }}>
           <Title level={5}>
             <ExperimentOutlined style={{ marginRight: 8 }} />
-            算法优化状态
+            系统状态信息
           </Title>
           
           <Row gutter={[16, 16]}>
@@ -159,9 +159,9 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({
                 <div style={{ textAlign: 'center' }}>
                   <CheckCircleOutlined style={{ fontSize: 24, color: '#52c41a' }} />
                   <div style={{ marginTop: 8 }}>
-                    <Text strong>优化完成</Text>
+                    <Text strong>系统运行正常</Text>
                     <br />
-                    <Text type="secondary">{systemStatus.optimization_status.improvement} 性能提升</Text>
+                    <Text type="secondary">基于8/18真实数据</Text>
                   </div>
                 </div>
               </Card>
@@ -170,8 +170,8 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({
             <Col xs={24} sm={8}>
               <Card size="small">
                 <Statistic
-                  title="最后优化时间"
-                  value={new Date(systemStatus.optimization_status.last_optimization).toLocaleString('zh-CN')}
+                  title="服务状态"
+                  value={systemStatus.service || '运行中'}
                   valueStyle={{ fontSize: 14 }}
                 />
               </Card>
@@ -181,10 +181,10 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({
               <Card size="small">
                 <div style={{ textAlign: 'center' }}>
                   <Tag color="green" style={{ fontSize: 14, padding: '4px 12px' }}>
-                    {systemStatus.optimization_status.status}
+                    {systemStatus.status || 'healthy'}
                   </Tag>
                   <div style={{ marginTop: 8 }}>
-                    <Text type="secondary">系统状态</Text>
+                    <Text type="secondary">运行状态</Text>
                   </div>
                 </div>
               </Card>

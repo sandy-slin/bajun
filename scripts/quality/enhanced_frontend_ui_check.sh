@@ -30,11 +30,6 @@ mkdir -p logs
 echo ""
 echo -e "${YELLOW}🔍 检查前置条件...${NC}"
 
-if [ ! -d "venv" ]; then
-    echo -e "${RED}❌ Python虚拟环境不存在${NC}"
-    exit 1
-fi
-
 if [ ! -d "frontend" ]; then
     echo -e "${RED}❌ 前端目录不存在${NC}"
     exit 1
@@ -43,7 +38,7 @@ fi
 echo -e "${GREEN}✅ 前置条件检查通过${NC}"
 
 # 激活虚拟环境
-source venv/bin/activate
+source "$PROJECT_ROOT/venv/bin/activate"
 
 # 检查Python依赖
 echo -e "${YELLOW}📦 检查Python依赖...${NC}"
@@ -212,7 +207,7 @@ fi
 echo -e "${GREEN}✅ 前置条件检查通过${NC}"
 
 # 激活Python虚拟环境
-source venv/bin/activate
+source "$PROJECT_ROOT/venv/bin/activate"
 
 # 确保增强检查器脚本可执行
 chmod +x scripts/quality/enhanced_frontend_ui_check.py

@@ -34,10 +34,6 @@ echo -e "${CYAN}Phase 0: 前置条件检查${NC}"
 echo "========================================================================"
 
 # 检查基本目录结构
-if [ ! -d "venv" ]; then
-    echo -e "${RED}❌ Python虚拟环境不存在${NC}"
-    exit 1
-fi
 
 if [ ! -d "frontend" ]; then
     echo -e "${RED}❌ 前端目录不存在${NC}"
@@ -52,7 +48,7 @@ fi
 echo -e "${GREEN}✅ 基础环境检查通过${NC}"
 
 # 激活虚拟环境
-source venv/bin/activate
+source "$PROJECT_ROOT/venv/bin/activate"
 
 # 检查Python依赖
 echo -e "${YELLOW}📦 检查Python依赖...${NC}"

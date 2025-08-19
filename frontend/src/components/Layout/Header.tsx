@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Layout, Space, Badge, Dropdown, Menu, Typography, Divider } from 'antd';
+import { Layout, Space, Badge, Dropdown, Menu, Typography } from 'antd';
 import {
   BellOutlined,
   WifiOutlined,
@@ -9,14 +9,14 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { useWebSocket } from '../../contexts/WebSocketContext';
+import { useData } from '../../contexts/DataContext';
 import { useApi } from '../../contexts/ApiContext';
 
 const { Header: AntHeader } = Layout;
 const { Text } = Typography;
 
 const Header: React.FC = () => {
-  const { isConnected, connectionState, systemStatus } = useWebSocket();
+  const { isConnected, systemStatus, lastUpdated } = useData();
   const { healthCheck } = useApi();
   const [apiStatus, setApiStatus] = useState<'healthy' | 'unhealthy' | 'checking'>('checking');
 
@@ -63,9 +63,15 @@ const Header: React.FC = () => {
         <Space>
           {getConnectionIcon()}
           <div>
-            <Text strong>WebSocket连接</Text>
+            <Text strong>数据连接</Text>
             <br />
-            <Text type="secondary">状态: {isConnected ? '已连接' : '已断开'}</Text>
+            <Text type="secondary">状态: {isConnected ? '实时更新中' : '已断开'}</Text>
+            {lastUpdated && (
+              <>
+                <br />
+                <Text type="secondary">最后更新: {lastUpdated}</Text>
+              </>
+            )}
           </div>
         </Space>
       </Menu.Item>
@@ -87,13 +93,13 @@ const Header: React.FC = () => {
           <Menu.Divider />
           <Menu.Item key="performance">
             <div>
-              <Text strong>系统性能</Text>
+              <Text strong>系统状态</Text>
               <br />
-              <Text type="secondary">板块准确率: {systemStatus.performance_metrics.sector_accuracy}</Text>
+              <Text type="secondary">服务: {systemStatus.service}</Text>
               <br />
-              <Text type="secondary">股票胜率: {systemStatus.performance_metrics.stock_win_rate}</Text>
+              <Text type="secondary">状态: {systemStatus.status}</Text>
               <br />
-              <Text type="secondary">组合收益: {systemStatus.performance_metrics.portfolio_return}</Text>
+              <Text type="secondary">市场: {systemStatus.market_status}</Text>
             </div>
           </Menu.Item>
         </>

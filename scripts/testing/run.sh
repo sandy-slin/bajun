@@ -1,3 +1,3 @@
 #!/bin/bash
-source venv/bin/activate
+source "$PROJECT_ROOT/venv/bin/activate"
 python src/main.py $@

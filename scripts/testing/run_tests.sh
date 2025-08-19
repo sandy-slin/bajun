@@ -7,21 +7,15 @@ set -e
 
 # 获取脚本所在目录的绝对路径
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$PROJECT_ROOT"
 
 echo "🧪 运行A股智能交易决策平台测试..."
 echo "======================================================"
 
-# 1. 检查前置条件
-if [ ! -d "venv" ]; then
-    echo "❌ Python虚拟环境不存在，请先运行:"
-    echo "   ./install_dependencies.sh"
-    exit 1
-fi
-
-# 2. 激活虚拟环境
-source venv/bin/activate
-export PYTHONPATH="$SCRIPT_DIR:$PYTHONPATH"
+# 1. 激活虚拟环境
+source "$PROJECT_ROOT/venv/bin/activate"
+export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
 
 # 3. 检查服务状态
 echo "🔍 检查服务状态..."

@@ -2,13 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Row, Col, Card, Statistic, Typography, Button, Space, Alert, Spin } from 'antd';
 import {
   ArrowUpOutlined,
-  ArrowDownOutlined,
   RiseOutlined,
-  FallOutlined,
   ReloadOutlined,
   ApiOutlined,
 } from '@ant-design/icons';
-import { useWebSocket } from '../contexts/WebSocketContext';
+import { useData } from '../contexts/DataContext';
 import { useApi } from '../contexts/ApiContext';
 import MarketOverview from '../components/Dashboard/MarketOverview';
 import PerformanceMetrics from '../components/Dashboard/PerformanceMetrics';
@@ -21,9 +19,8 @@ const Dashboard: React.FC = () => {
     isConnected, 
     marketData, 
     systemStatus, 
-    subscribe, 
-    connect 
-  } = useWebSocket();
+    refreshData 
+  } = useData();
   
   const { 
     getSystemStatus, 
@@ -36,20 +33,29 @@ const Dashboard: React.FC = () => {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   useEffect(() => {
-    // 自动连接WebSocket并订阅系统状态
-    if (!isConnected) {
-      connect().then(() => {
-        subscribe('system_status');
-        subscribe('market_data');
-      }).catch(console.error);
-    } else {
-      subscribe('system_status');
-      subscribe('market_data');
-    }
+    // 数据已通过定时查询自动获取，只需加载系统状态
+    const loadData = async () => {
+      try {
+        const [systemData, sectorValidation, stockValidation] = await Promise.all([
+          getSystemStatus(),
+          validateSectorPerformance(),
+          validateStockPerformance(),
+        ]);
 
-    // 获取系统状态
-    loadSystemData();
-  }, [isConnected]);
+        setPerformanceData({
+          system: systemData,
+          sector: sectorValidation,
+          stock: stockValidation,
+        });
+
+        setLastUpdate(new Date());
+      } catch (error) {
+        console.error('加载系统数据失败:', error);
+      }
+    };
+    
+    loadData();
+  }, [getSystemStatus, validateSectorPerformance, validateStockPerformance]);
 
   const loadSystemData = async () => {
     try {
@@ -71,7 +77,8 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
+    await refreshData();
     loadSystemData();
   };
 
@@ -101,7 +108,7 @@ const Dashboard: React.FC = () => {
                 icon={<ApiOutlined />}
                 disabled={!isConnected}
               >
-                {isConnected ? '实时连接' : '连接中断'}
+                {isConnected ? '数据更新中' : '数据已停止'}
               </Button>
             </Space>
           </Col>
@@ -111,8 +118,8 @@ const Dashboard: React.FC = () => {
       {/* 连接状态提示 */}
       {!isConnected && (
         <Alert
-          message="实时数据连接已断开"
-          description="正在尝试重新连接，部分数据可能不是最新的"
+          message="数据更新已停止"
+          description="定时数据更新已停止，点击刷新按钮手动更新数据"
           type="warning"
           showIcon
           style={{ marginBottom: 24 }}
@@ -124,12 +131,10 @@ const Dashboard: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="板块预测准确率"
-              value={systemStatus?.performance_metrics.sector_accuracy || '69.0%'}
-              precision={1}
+              title="系统状态"
+              value={systemStatus?.status || '正常'}
               valueStyle={{ color: '#3f8600' }}
               prefix={<ArrowUpOutlined />}
-              suffix=""
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
               相比基准提升 +7.8%
@@ -140,12 +145,10 @@ const Dashboard: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="股票选择胜率"
-              value={systemStatus?.performance_metrics.stock_win_rate || '50.0%'}
-              precision={1}
+              title="服务状态"
+              value={systemStatus?.service || '运行中'}
               valueStyle={{ color: '#3f8600' }}
               prefix={<RiseOutlined />}
-              suffix=""
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
               相比基准提升 +25.0%
@@ -156,12 +159,10 @@ const Dashboard: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="组合收益率"
-              value={systemStatus?.performance_metrics.portfolio_return || '0.31%'}
-              precision={2}
+              title="市场状态"
+              value={systemStatus?.market_status || 'A股大涨中'}
               valueStyle={{ color: '#3f8600' }}
               prefix={<ArrowUpOutlined />}
-              suffix=""
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
               相比基准提升 +126.1%
@@ -172,14 +173,12 @@ const Dashboard: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="系统运行时间"
-              value={systemStatus?.performance_metrics.system_uptime || '99.9%'}
-              precision={1}
+              title="数据策略"
+              value="真实数据"
               valueStyle={{ color: '#3f8600' }}
-              suffix=""
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
-              当前活跃连接: {systemStatus?.active_connections || 0}
+              基于8/18 A股大涨数据
             </Text>
           </Card>
         </Col>

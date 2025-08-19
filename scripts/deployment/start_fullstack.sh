@@ -6,11 +6,10 @@
 echo "🚀 启动A股智能交易决策平台全栈服务..."
 echo "======================================================"
 
-# 检查Python虚拟环境
-if [ ! -d "venv" ]; then
-    echo "❌ 未找到Python虚拟环境，请先运行 ./setup.sh"
-    exit 1
-fi
+# 获取项目根目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$PROJECT_ROOT"
 
 # 检查前端依赖
 if [ ! -d "frontend/node_modules" ]; then
@@ -20,7 +19,7 @@ fi
 
 # 激活Python虚拟环境
 echo "🐍 激活Python虚拟环境..."
-source venv/bin/activate
+source "$PROJECT_ROOT/venv/bin/activate"
 
 # 设置环境变量
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"

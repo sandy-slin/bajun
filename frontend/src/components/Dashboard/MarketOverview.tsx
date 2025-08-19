@@ -5,7 +5,7 @@ import {
   ArrowDownOutlined,
   StockOutlined 
 } from '@ant-design/icons';
-import { MarketData } from '../../services/websocket';
+import { MarketData } from '../../services/dataService';
 
 const { Title, Text } = Typography;
 

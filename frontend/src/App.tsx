@@ -11,7 +11,7 @@ import StockRecommendation from './pages/StockRecommendation';
 import Portfolio from './pages/Portfolio';
 import TradingAssistant from './pages/TradingAssistant';
 import Settings from './pages/Settings';
-import { WebSocketProvider } from './contexts/WebSocketContext';
+import { DataProvider } from './contexts/DataContext';
 import { ApiProvider } from './contexts/ApiContext';
 import './App.css';
 
@@ -20,7 +20,7 @@ const { Content } = Layout;
 function App() {
   return (
     <ApiProvider>
-      <WebSocketProvider>
+      <DataProvider>
         <Router>
           <Layout style={{ minHeight: '100vh' }}>
             <Sidebar />
@@ -49,7 +49,7 @@ function App() {
             </Layout>
           </Layout>
         </Router>
-      </WebSocketProvider>
+      </DataProvider>
     </ApiProvider>
   );
 }
