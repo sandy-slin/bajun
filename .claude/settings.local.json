@@ -28,7 +28,9 @@
       "Bash(open http://localhost:3000)",
       "Bash(git add:*)",
       "Bash(git rebase:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git submodule add:*)",
+      "Bash(git submodule:*)"
     ],
     "deny": [],
     "ask": [],
